@@ -63,6 +63,9 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
       if (g.system) throw new HttpError(400, `${g.name} is built into Google and can’t be renamed.`);
       group = await p.renameGroup(ctx, g.id, readName());
       groups = groups.map((x) => (x.id === g.id ? group! : x));
+      await env.DB.prepare('UPDATE field_defs SET list_name = ?1 WHERE user_id = ?2 AND account_id = ?3 AND list_id = ?4')
+        .bind(group.name, user.id, account.id, g.id)
+        .run();
       break;
     }
     case 'delete': {

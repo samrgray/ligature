@@ -57,6 +57,16 @@ struct FieldDef: Codable, Identifiable, Hashable {
     let type: String // text, longtext, date, url, checkbox
     /// Built-in fields: "neighborhood", "signal", "signal_username".
     var key: String?
+    /// A list’s own field: only on people in that list. listName outlives the list.
+    var accountId: String? = nil
+    var listId: String? = nil
+    var listName: String? = nil
+
+    /// Whether this field belongs on a contact with these lists.
+    func applies(accountId: String?, groups: [String]) -> Bool {
+        guard let listId else { return true }
+        return self.accountId == accountId && groups.contains(listId)
+    }
 }
 
 /// One of a contact’s addresses, placed on the map.

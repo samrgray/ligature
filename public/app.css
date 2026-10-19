@@ -352,7 +352,15 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.3); }
 .dlg { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .dlg h2 { margin: 0; font-size: 17px; }
 .dlg p { margin: 0; color: var(--secondary); font-size: 13px; }
-.field-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px 32px; gap: 8px; align-items: center; }
+.field-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 150px 32px; gap: 8px; align-items: center; }
+#fields-dlg { width: min(620px, calc(100vw - 32px)); }
+@media (max-width: 560px) {
+  .field-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px; }
+  .field-row > :first-child { grid-column: 1 / -1; }
+}
+.field-list { display: block; font-size: 11px; color: var(--secondary); font-weight: 400; }
+.past-row { display: flex; align-items: center; gap: 8px; }
+.past-value { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dlg-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1d1d1f; color: #fff; padding: 10px 16px; border-radius: 10px;

@@ -36,6 +36,7 @@ struct ContactDetailView: View {
                 if row != nil { RelationshipsSection(id: id, editing: $editingRelationship) }
             }
             yourFields.id("fields")
+            if !pastFields.isEmpty { pastSection }
         }
         .onAppear {
             if store.demo, store.demoScreen == "fields" {
@@ -266,18 +267,76 @@ struct ContactDetailView: View {
 
     // MARK: Your fields
 
+    private var contactAccount: String? { row?.accountId ?? detail?.account.id }
+    private var contactGroups: [String] { row?.groups ?? detail?.card.groups ?? [] }
+    private func stored(_ f: FieldDef) -> String { row?.fields[f.id] ?? detail?.fields[f.id] ?? "" }
+
+    /// Every-contact fields, plus the fields of lists they’re on.
+    private var currentFields: [FieldDef] {
+        store.fields.filter { $0.applies(accountId: contactAccount, groups: contactGroups) }
+    }
+
+    /// Values in a list’s fields they’re no longer on, or whose list was deleted.
+    private var pastFields: [FieldDef] {
+        store.fields.filter { !$0.applies(accountId: contactAccount, groups: contactGroups) && !stored($0).isEmpty }
+    }
+
+    private func listName(_ f: FieldDef) -> (name: String, deleted: Bool) {
+        if let accountId = f.accountId, let l = store.lists(for: accountId).first(where: { $0.id == f.listId }) { return (l.name, false) }
+        return (f.listName ?? "a list", true)
+    }
+
     private var yourFields: some View {
         Section {
             if store.fields.isEmpty {
                 Text("No fields yet. Add them in Ligature on the web.").foregroundStyle(.secondary)
             }
-            ForEach(store.fields) { f in
-                FieldEditor(contactId: id, field: f, stored: row?.fields[f.id] ?? detail?.fields[f.id] ?? "")
+            ForEach(currentFields) { f in
+                VStack(alignment: .leading, spacing: 2) {
+                    FieldEditor(contactId: id, field: f, stored: stored(f))
+                    if f.listId != nil {
+                        Text(listName(f).name).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
         } header: {
             Text("Your Fields")
         } footer: {
             Text("Only in Ligature. Never synced to Google, iPhone or Mac.")
+        }
+    }
+
+    private var pastSection: some View {
+        Section {
+            ForEach(pastFields) { f in
+                let list = listName(f)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(f.label).font(.subheadline).foregroundStyle(.secondary)
+                        Text(pastValue(f)).textSelection(.enabled)
+                        Text(list.deleted ? "\(list.name) (deleted)" : list.name).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .swipeActions {
+                    Button("Remove", role: .destructive) {
+                        Task { await store.saveField(id, fieldId: f.id, value: "") }
+                    }
+                }
+            }
+        } header: {
+            Text("Past Fields")
+        } footer: {
+            Text("From lists they’re no longer on, or that were deleted. Swipe to remove one.")
+        }
+    }
+
+    private func pastValue(_ f: FieldDef) -> String {
+        let v = stored(f)
+        switch f.type {
+        case "checkbox": return "Yes"
+        case "date": return FieldEditor.day.date(from: v)?.formatted(date: .abbreviated, time: .omitted) ?? v
+        default: return v
         }
     }
 }

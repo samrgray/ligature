@@ -19,7 +19,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
 
   const accounts = await accountsFor(env.DB, user.id);
   const fields = (
-    await env.DB.prepare('SELECT id, label, type, position, key FROM field_defs WHERE user_id = ?1 ORDER BY position, created_at').bind(user.id).all()
+    await env.DB.prepare('SELECT id, label, type, position, key, account_id AS accountId, list_id AS listId, list_name AS listName FROM field_defs WHERE user_id = ?1 ORDER BY position, created_at').bind(user.id).all()
   ).results;
 
   return json({

@@ -2,11 +2,12 @@ import type { Data, Env } from '../../../lib/types';
 import { HttpError, json, readJson } from '../../../lib/http';
 import { requireUser } from '../../../lib/session';
 import { FIELD_TYPES } from '../../../lib/schema';
+import { readList } from '../../../lib/fields';
 
-// PATCH /api/fields/:id  { label?, type?, position? }
+// PATCH /api/fields/:id  { label?, type?, position?, list? }   (list: { accountId, listId } or null for every contact)
 export const onRequestPatch: PagesFunction<Env, 'id', Data> = async ({ request, env, data, params }) => {
   const user = requireUser(data.user);
-  const body = await readJson<{ label?: unknown; type?: unknown; position?: unknown }>(request);
+  const body = await readJson<{ label?: unknown; type?: unknown; position?: unknown; list?: unknown }>(request);
   const sets: string[] = [];
   const args: unknown[] = [String(params.id), user.id];
   if (body.label !== undefined) {
@@ -15,9 +16,16 @@ export const onRequestPatch: PagesFunction<Env, 'id', Data> = async ({ request, 
     args.push(label);
     sets.push(`label = ?${args.length}`);
   }
-  if (body.type !== undefined) {
+  if (body.type !== undefined || body.list !== undefined) {
     const f = await env.DB.prepare('SELECT key FROM field_defs WHERE id = ?1 AND user_id = ?2').bind(String(params.id), user.id).first<{ key: string | null }>();
-    if (f?.key) throw new HttpError(400, 'This field is built in, so its type can’t change.');
+    if (f?.key) throw new HttpError(400, 'This field is built in, so it’s on every contact and its type can’t change.');
+  }
+  if (body.list !== undefined) {
+    const list = await readList(env.DB, user.id, body.list);
+    for (const [col, v] of [['account_id', list?.accountId], ['list_id', list?.listId], ['list_name', list?.listName]] as const) {
+      args.push(v ?? null);
+      sets.push(`${col} = ?${args.length}`);
+    }
   }
   if (body.type !== undefined) {
     if (typeof body.type !== 'string' || !(FIELD_TYPES as readonly string[]).includes(body.type)) throw new HttpError(400, 'Unknown field type.');

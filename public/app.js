@@ -677,8 +677,17 @@ function addressLine(c) {
   return [p.street, city, p.country].filter(Boolean).join(', ');
 }
 
-/** Every column the table can show: built-ins, then your own fields. */
-function columnDefs() {
+// ---- List-specific fields: shown only on people in that list, and as columns while viewing it.
+
+const fieldList = (f) => (f.listId ? accountById(f.accountId)?.groups.find((g) => g.id === f.listId) ?? null : null);
+const fieldListName = (f) => fieldList(f)?.name ?? f.listName ?? 'a list';
+/** Whether a field belongs on a contact: every-contact fields always; a list’s fields if they’re on it. */
+const fieldApplies = (f, accountId, groups) => !f.listId || (f.accountId === accountId && (groups ?? []).includes(f.listId));
+const fieldOnView = (f) => !f.listId || (S.filter.type === 'group' && S.filter.id === f.listId && S.filter.accountId === f.accountId);
+
+/** Every column the table can show: built-ins, then your own fields (a list’s own fields only
+ *  while you’re viewing that list, unless `all`). */
+function columnDefs(all = false) {
   const tel = (v) => `tel:${v.replace(/[^\d+]/g, '')}`;
   const oneLine = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
   return [
@@ -693,7 +702,7 @@ function columnDefs() {
     { id: 'birthday', label: 'Birthday', w: 140, text: (c) => c.birthday, sort: (c) => c.birthdayKey },
     { id: 'lists', label: 'Lists', w: 180, text: (c) => (accountById(c.accountId)?.groups ?? []).filter((g) => c.groups.includes(g.id)).map((g) => g.name).join(', ') },
     { id: 'notes', label: 'Notes', w: 260, text: (c) => oneLine(c.notes) },
-    ...S.session.fields.map((f) => ({
+    ...S.session.fields.filter((f) => all || fieldOnView(f)).map((f) => ({
       id: `f:${f.id}`,
       label: f.label,
       own: true,
@@ -728,7 +737,7 @@ function defaultColumns() {
 /** Columns, widths and sort, saved on the server so they follow you between devices. */
 function loadPrefs() {
   const p = S.session.user.prefs || {};
-  const known = new Set(columnDefs().map((c) => c.id));
+  const known = new Set(columnDefs(true).map((c) => c.id));
   let cols = Array.isArray(p.columns)
     ? p.columns.filter((c) => c && known.has(c.id)).map((c) => (Number(c.w) >= COL_MIN ? { id: c.id, w: Number(c.w) } : { id: c.id }))
     : [];
@@ -1763,7 +1772,9 @@ function renderDetail() {
   const phones = uniqueBy(c.phones, (p) => p.value.replace(/[^\d+]/g, ''));
   const emails = uniqueBy(c.emails, (e) => e.value.trim().toLowerCase());
   const rows = propRows(c);
-  const fields = S.session.fields;
+  const fields = S.session.fields.filter((f) => fieldApplies(f, d.account.id, c.groups));
+  // Values in a list’s fields they’re no longer on, or whose list was deleted.
+  const past = S.session.fields.filter((f) => !fieldApplies(f, d.account.id, c.groups) && (d.fields[f.id] ?? '') !== '');
   const hasOwn = Object.keys(d.fields).length > 0;
 
   el.innerHTML = `${toolbar}
@@ -1812,12 +1823,17 @@ function renderDetail() {
         ${
           fields.length
             ? `<dl class="props">${fields
-                .map((f) => `<dt><label for="own-${h(f.id)}">${h(f.label)}</label></dt><dd>${ownFieldInput(f, d.fields[f.id] ?? '')}</dd>`)
+                .map(
+                  (f) =>
+                    `<dt><label for="own-${h(f.id)}">${h(f.label)}</label>${f.listId ? `<span class="field-list">${h(fieldListName(f))}</span>` : ''}</dt><dd>${ownFieldInput(f, d.fields[f.id] ?? '')}</dd>`,
+                )
                 .join('')}</dl>`
             : `<p class="empty">No fields yet. <button class="link" data-action="fields">Add one</button>.</p>`
         }
         <div class="own-status" id="own-status" role="status" aria-live="polite"></div>
       </section>
+
+      ${past.length ? pastFieldsSection(past, d) : ''}
 
       <div class="foot">${h(d.account.providerName)}${d.account.label && d.account.label !== d.account.providerName ? ` · ${h(d.account.label)}` : ''} · Synced ${h(ago(d.syncedAt))}${
         hasOwn && !d.linked ? ' · Linking to Google…' : ''
@@ -1826,6 +1842,30 @@ function renderDetail() {
 
   for (const ta of el.querySelectorAll('textarea.own-input')) autosize(ta);
   for (const m of el.querySelectorAll('.menu[popover]')) anchorMenu(m);
+}
+
+function pastValue(f, v) {
+  if (f.type === 'checkbox') return 'Yes';
+  if (f.type === 'date') return h(shortDay(v));
+  if (f.type === 'url') return `<a href="${h(/^https?:\/\//i.test(v) ? v : `https://${v}`)}" target="_blank" rel="noopener noreferrer">${h(v)}</a>`;
+  return h(v);
+}
+
+function pastFieldsSection(past, d) {
+  return `<section class="own past" aria-labelledby="past-h">
+      <div class="own-h">
+        <h2 id="past-h">Past fields</h2>
+        <p>From lists they’re no longer on, or that were deleted.</p>
+      </div>
+      <dl class="props">${past
+        .map((f) => {
+          const gone = !fieldList(f);
+          return `<dt>${h(f.label)}<span class="field-list">${h(fieldListName(f))}${gone ? ' (deleted)' : ''}</span></dt>
+            <dd class="past-row"><span class="past-value">${pastValue(f, d.fields[f.id])}</span>
+              <button type="button" class="icon-btn" data-action="clear-past" data-id="${h(f.id)}" aria-label="Remove ${h(f.label)}" title="Remove">${ICON.x}</button></dd>`;
+        })
+        .join('')}</dl>
+    </section>`;
 }
 
 // ---------------------------------------------------------------- relationships
@@ -2451,15 +2491,30 @@ function renderFieldsDialog() {
     ]
       .map(([v, l]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${l}</option>`)
       .join('')}</select>`;
+  const accounts = S.session.accounts;
+  const listSelect = (f, attrs) => {
+    const value = f?.listId ? `${f.accountId}|${f.listId}` : '';
+    const opts = (a) =>
+      a.groups
+        .filter((g) => g.id !== 'contactGroups/myContacts')
+        .map((g) => `<option value="${h(`${a.id}|${g.id}`)}" ${`${a.id}|${g.id}` === value ? 'selected' : ''}>${h(g.name)}</option>`)
+        .join('');
+    const gone = f?.listId && !fieldList(f) ? `<option value="${h(value)}" selected disabled>${h(fieldListName(f))} (deleted)</option>` : '';
+    return `<select class="input" ${attrs}><option value="">Every contact</option>${gone}${
+      accounts.length > 1 ? accounts.map((a) => `<optgroup label="${h(a.label)}">${opts(a)}</optgroup>`).join('') : accounts.map(opts).join('')
+    }</select>`;
+  };
+  const viewing = S.filter.type === 'group' && S.filter.id !== 'contactGroups/myContacts' ? { accountId: S.filter.accountId, listId: S.filter.id } : null;
   dlg.innerHTML = `
     <form method="dialog" class="dlg" id="fields-form">
       <h2 id="fields-title">Your fields</h2>
-      <p>Extra fields on every contact. They’re stored only in Ligature and never sync to Google, iPhone or Mac.</p>
+      <p>Extra fields on every contact, or only on people in one list. They’re stored only in Ligature and never sync to Google, iPhone or Mac.</p>
       ${fields
         .map(
           (f) => `<div class="field-row">
             <input class="input" aria-label="Field name" data-field-label="${h(f.id)}" value="${h(f.label)}">
             ${typeSelect(f.type, `aria-label="Type of ${h(f.label)}" data-field-type="${h(f.id)}"${f.key ? ' disabled' : ''}`)}
+            ${listSelect(f, `aria-label="Who has ${h(f.label)}" data-field-list="${h(f.id)}"${f.key ? ' disabled' : ''}`)}
             ${
               f.key
                 ? `<span class="field-builtin" title="${f.key === 'signal' ? 'Built in: adds a Signal button' : f.key === 'signal_username' ? 'Built in: the Signal button uses it' : 'Built in: places people on the map'}">${ICON.pin}</span>`
@@ -2471,6 +2526,7 @@ function renderFieldsDialog() {
       <div class="field-row">
         <input class="input" id="new-field-label" aria-label="New field name" placeholder="New field">
         ${typeSelect('text', 'id="new-field-type" aria-label="New field type"')}
+        ${listSelect(viewing, 'id="new-field-list" aria-label="Who has the new field"')}
         <button type="button" class="icon-btn" data-action="add-field" aria-label="Add field">${ICON.plus}</button>
       </div>
       <div class="dlg-foot"><button class="btn primary" value="close">Done</button></div>
@@ -3501,13 +3557,30 @@ document.addEventListener('click', async (e) => {
       const label = $('#new-field-label').value.trim();
       if (!label) return $('#new-field-label').focus();
       try {
-        await api('/fields', { method: 'POST', body: { label, type: $('#new-field-type').value } });
+        const [accountId, listId] = ($('#new-field-list').value || '|').split('|');
+        const f = await api('/fields', {
+          method: 'POST',
+          body: { label, type: $('#new-field-type').value, list: listId ? { accountId, listId } : null },
+        });
+        // A list’s field starts out as a column, shown whenever you view that list.
+        if (listId && !S.cols.some((c) => c.id === `f:${f.id}`)) {
+          S.cols.push({ id: `f:${f.id}` });
+          savePrefs();
+        }
         await fieldsChanged();
+        renderGrid();
         $('#new-field-label')?.focus();
       } catch (err) {
         handleError(err);
       }
       return;
+    }
+    case 'clear-past': {
+      const f = fieldById(t.dataset.id);
+      if (!S.detail || !f || !window.confirm(`Remove ${S.detail.card.givenName || 'their'}${S.detail.card.givenName ? '’s' : ''} “${f.label}”?`)) return;
+      pending.set(t.dataset.id, '');
+      await flushFieldSaves();
+      return renderDetail();
     }
     case 'delete-field': {
       const f = S.session.fields.find((x) => x.id === t.dataset.id);
@@ -3811,6 +3884,16 @@ document.addEventListener('change', async (e) => {
     try {
       await api(`/fields/${encodeURIComponent(t.dataset.fieldType)}`, { method: 'PATCH', body: { type: t.value } });
       await fieldsChanged();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+  if (t.dataset.fieldList) {
+    try {
+      const [accountId, listId] = (t.value || '|').split('|');
+      await api(`/fields/${encodeURIComponent(t.dataset.fieldList)}`, { method: 'PATCH', body: { list: listId ? { accountId, listId } : null } });
+      await fieldsChanged();
+      renderGrid();
     } catch (err) {
       handleError(err);
     }

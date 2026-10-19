@@ -193,6 +193,13 @@ const MIGRATIONS: string[][] = [
          (SELECT COALESCE(MAX(position), -1) + 1 FROM field_defs f WHERE f.user_id = u.id), CAST(strftime('%s', 'now') AS INTEGER) * 1000, 'signal_username'
        FROM users u WHERE NOT EXISTS (SELECT 1 FROM field_defs f WHERE f.user_id = u.id AND f.key = 'signal_username')`,
   ],
+  [
+    // List-specific fields: shown only on people in that list (and as columns when you view it).
+    // list_name keeps the list’s name for when the list itself is deleted.
+    `ALTER TABLE field_defs ADD COLUMN account_id TEXT`,
+    `ALTER TABLE field_defs ADD COLUMN list_id TEXT`,
+    `ALTER TABLE field_defs ADD COLUMN list_name TEXT`,
+  ],
 ];
 
 let ready: Promise<void> | null = null;
