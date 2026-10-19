@@ -579,6 +579,7 @@ function renderSidebar() {
 
     <div class="sidebar-foot">
       <button class="link" data-action="fields">Your Fields…</button>
+      <a class="link" href="/api/backup" download title="Downloads everything Ligature keeps for you, as one file">Download Backup</a>
       <button class="link" data-action="logout">Sign Out</button>
       ${themeButton()}
     </div>`;

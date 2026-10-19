@@ -168,7 +168,8 @@ body.resizing-sidebar, body.resizing-sidebar * { cursor: col-resize !important; 
   opacity: 0; visibility: hidden; transform: translateY(2px); transition: opacity 0.12s, transform 0.12s, visibility 0.12s; pointer-events: none;
 }
 .tip-wrap:hover .tip, .tip-btn:focus + .tip { opacity: 1; visibility: visible; transform: none; }
-.sidebar-foot { display: flex; align-items: center; gap: 14px; padding: 0 0 0 8px; font-size: 12px; }
+.sidebar-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 0 0 0 8px; font-size: 12px; }
+.sidebar-foot .link { white-space: nowrap; text-decoration: none; }
 .theme-btn {
   margin-left: auto; width: 30px; height: 30px; padding: 0; border: 1px solid var(--border); border-radius: 15px;
   background: var(--card); color: var(--secondary); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
