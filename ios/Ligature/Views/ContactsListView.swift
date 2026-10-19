@@ -144,27 +144,6 @@ struct ContactsListView: View {
         return out
     }
 
-    private struct LetterSection: Identifiable {
-        let letter: String
-        var items: [Entry]
-        var id: String { letter }
-    }
-
-    private func sections(_ items: [Entry]) -> [LetterSection] {
-        var out: [LetterSection] = []
-        for c in items {
-            let first = c.lead.sortKey(byFirst: sortByFirst).folding(options: .diacriticInsensitive, locale: nil).first
-            let letter = first.map { $0.isLetter ? String($0).uppercased() : "#" } ?? "#"
-            if out.last?.letter == letter { out[out.count - 1].items.append(c) } else { out.append(LetterSection(letter: letter, items: [c])) }
-        }
-        // Names that don’t start with a letter go last, like in Contacts.
-        if let i = out.firstIndex(where: { $0.letter == "#" }), i != out.count - 1 {
-            let hash = out.remove(at: i)
-            out.append(hash)
-        }
-        return out
-    }
-
     var body: some View {
         NavigationStack(path: $path) {
             Group {
@@ -289,37 +268,33 @@ struct ContactsListView: View {
         // Rows are only selectable in Select mode; otherwise iOS treats a tap as selecting the
         // row instead of opening the contact.
         return List(selection: selecting ? $selection : nil) {
-            ForEach(sections(entries(items))) { section in
-                Section(section.letter) {
-                    ForEach(section.items) { e in
-                        let c = e.lead
-                        NavigationLink(value: e.id) {
-                            if e.members.count > 1 {
-                                TogetherRowView(members: e.members)
-                            } else {
-                                ContactRowView(contact: c, sortByFirst: sortByFirst)
-                            }
-                        }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                // With tabs, a sideways swipe moves between lists instead.
-                                if !paging && e.members.count == 1 && !c.phone.isEmpty {
-                                    Button { if let u = Links.tel(c.phone) { openURL(u) } } label: { Label("Call", systemImage: "phone.fill") }
-                                        .tint(.green)
-                                    Button { if let u = Links.sms(c.phone) { openURL(u) } } label: { Label("Message", systemImage: "message.fill") }
-                                        .tint(.blue)
-                                }
-                            }
-                            .contextMenu {
-                                if e.members.count > 1 {
-                                    ForEach(e.members) { m in
-                                        Menu(m.displayName.isEmpty ? "No Name" : m.displayName) { quickActions(m) }
-                                    }
-                                } else {
-                                    quickActions(c)
-                                }
-                            }
+            ForEach(entries(items)) { e in
+                let c = e.lead
+                NavigationLink(value: e.id) {
+                    if e.members.count > 1 {
+                        TogetherRowView(members: e.members)
+                    } else {
+                        ContactRowView(contact: c, sortByFirst: sortByFirst)
                     }
                 }
+                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        // With tabs, a sideways swipe moves between lists instead.
+                        if !paging && e.members.count == 1 && !c.phone.isEmpty {
+                            Button { if let u = Links.tel(c.phone) { openURL(u) } } label: { Label("Call", systemImage: "phone.fill") }
+                                .tint(.green)
+                            Button { if let u = Links.sms(c.phone) { openURL(u) } } label: { Label("Message", systemImage: "message.fill") }
+                                .tint(.blue)
+                        }
+                    }
+                    .contextMenu {
+                        if e.members.count > 1 {
+                            ForEach(e.members) { m in
+                                Menu(m.displayName.isEmpty ? "No Name" : m.displayName) { quickActions(m) }
+                            }
+                        } else {
+                            quickActions(c)
+                        }
+                    }
             }
             if !items.isEmpty {
                 Text("\(items.count) \(items.count == 1 ? "Contact" : "Contacts")")
