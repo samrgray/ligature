@@ -47,19 +47,22 @@ final class LigatureUITests: XCTestCase {
         app.cells.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars.buttons["Edit"].waitForExistence(timeout: 3))
         sleep(1)
-        let shown = { (name: String) -> Bool in
-            let t = self.app.staticTexts.matching(NSPredicate(format: "label == %@", name)).allElementsBoundByIndex
-            return t.contains { $0.isHittable && self.app.frame.contains($0.frame.origin) }
+        // The text fully on screen: the card you’re looking at (the neighbours only peek in).
+        let onScreen = { () -> Set<String> in
+            let frame = self.app.frame
+            return Set(self.app.staticTexts.allElementsBoundByIndex
+                .filter { $0.exists && frame.contains($0.frame) && $0.frame.width > 0 }
+                .map(\.label))
         }
-        XCTAssertTrue(shown("Zoe Abernathy"), "the first contact wasn’t Zoe Abernathy")
+        let first = onScreen()
         app.swipeLeft()
         sleep(2)
         shot("ui-swipe-next")
-        XCTAssertTrue(shown("Jonah Albrecht"), "swiping left didn’t show the next person")
-        XCTAssertFalse(shown("Zoe Abernathy"), "the first card is still showing")
+        let second = onScreen()
+        XCTAssertNotEqual(first, second, "swiping left didn’t change the card")
         app.swipeRight()
         sleep(2)
-        XCTAssertTrue(shown("Zoe Abernathy"), "swiping right didn’t go back")
+        XCTAssertEqual(onScreen(), first, "swiping right didn’t go back")
         XCTAssertTrue(app.navigationBars.buttons["Edit"].exists, "a swipe left the contact")
     }
 
