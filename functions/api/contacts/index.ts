@@ -3,7 +3,7 @@ import { HttpError, json, now, readJson } from '../../../lib/http';
 import { requireUser } from '../../../lib/session';
 import { provider } from '../../../lib/providers';
 import { relationshipsFor, sortKeyFor } from '../../../lib/contacts';
-import { checkboxFields, cleanEdit, contactPayload, searchText } from '../../../lib/payload';
+import { fieldDefsFor, cleanEdit, contactPayload, searchText } from '../../../lib/payload';
 
 /**
  * The first address as a street, a “City, ST 12345” line and a country, and whether it’s the one
@@ -38,7 +38,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
       .bind(user.id)
       .all<{ id: string; account_id: string; data_json: string; provider: string; fields_json: string | null }>()
   ).results;
-  const checkboxes = await checkboxFields(env.DB, user.id);
+  const defs = await fieldDefsFor(env.DB, user.id);
 
   return json({
     relationships: await relationshipsFor(env.DB, user.id),
@@ -63,7 +63,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
         birthdayKey: card.birthdayKey,
         notes: card.notes.slice(0, 300),
         photoUrl: card.photoUrl,
-        search: searchText(card, fields, checkboxes),
+        search: searchText(card, fields, defs, r.account_id),
         groups: card.groups,
         fields,
       };

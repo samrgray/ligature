@@ -2,27 +2,45 @@ import type { AccountRow, Card, CardEdit, ContactRow, Labeled, UserRow } from '.
 import { provider } from './providers';
 import { HttpError } from './http';
 
-/** Your fields that are checkboxes: ticked ones are searched by their label, not their “1”. */
-export async function checkboxFields(db: D1Database, userId: string): Promise<Map<string, string>> {
+export interface FieldInfo {
+  label: string;
+  type: string;
+  accountId: string | null;
+  listId: string | null;
+}
+
+/** Your field definitions, for search: types, and which list (if any) each belongs to. */
+export async function fieldDefsFor(db: D1Database, userId: string): Promise<Map<string, FieldInfo>> {
   const rows = (
-    await db.prepare(`SELECT id, label FROM field_defs WHERE user_id = ?1 AND type = 'checkbox'`).bind(userId).all<{ id: string; label: string }>()
+    await db
+      .prepare(`SELECT id, label, type, account_id AS accountId, list_id AS listId FROM field_defs WHERE user_id = ?1`)
+      .bind(userId)
+      .all<FieldInfo & { id: string }>()
   ).results;
-  return new Map(rows.map((r) => [r.id, r.label]));
+  return new Map(rows.map(({ id, ...f }) => [id, f]));
 }
 
 /**
- * Everything about a contact that search looks through: every Google field and every one of
- * yours. Phone numbers are also there as bare digits, so “5550188” finds “(503) 555-0188”.
+ * Everything about a contact that search looks through: every Google field and your fields
+ * that are on them (not a list’s fields they’re no longer on). Phone numbers are also there as
+ * bare digits, so “5550188” finds “(503) 555-0188”. Ticked checkboxes match by their name.
  */
-export function searchText(card: Card, fields: Record<string, string>, checkboxes: Map<string, string>): string {
+export function searchText(card: Card, fields: Record<string, string>, defs: Map<string, FieldInfo>, accountId: string, groups = card.groups): string {
   const labeled = (list: Labeled[]) => list.flatMap((l) => [l.value, l.label]);
+  const own = Object.entries(fields).map(([id, v]) => {
+    const f = defs.get(id);
+    if (!f) return '';
+    if (f.listId && (f.accountId !== accountId || !groups.includes(f.listId))) return '';
+    if (f.type === 'checkbox') return v === '1' ? f.label : '';
+    return v;
+  });
   return [
     card.givenName, card.familyName, card.displayName, card.organization, card.title,
     ...labeled(card.phones), ...card.phones.map((p) => p.value.replace(/\D/g, '')),
     ...labeled(card.emails), ...labeled(card.urls), ...labeled(card.relations), ...labeled(card.events),
     ...card.addresses.flatMap((a) => [a.value, a.label]),
     card.birthday, card.notes,
-    ...Object.entries(fields).map(([id, v]) => (checkboxes.has(id) ? (v === '1' ? checkboxes.get(id) : '') : v)),
+    ...own,
   ]
     .filter(Boolean)
     .join(' ')
@@ -56,7 +74,7 @@ export async function contactPayload(db: D1Database, user: UserRow, row: Contact
     archived,
     card,
     fields,
-    search: searchText(card, fields, await checkboxFields(db, user.id)),
+    search: searchText(card, fields, await fieldDefsFor(db, user.id), account.id),
     linked: Boolean(row.link_stamped),
     account: { id: account.id, provider: account.provider, providerName: p.name, label: account.label },
     syncedAt: row.updated_at,

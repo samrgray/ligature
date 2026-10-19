@@ -35,7 +35,7 @@ struct ContactDetailView: View {
                 if let row { listsSection(row) }
                 if row != nil { RelationshipsSection(id: id, editing: $editingRelationship) }
             }
-            yourFields.id("fields")
+            yourFields
             if !pastFields.isEmpty { pastSection }
         }
         .onAppear {
@@ -286,24 +286,40 @@ struct ContactDetailView: View {
         return (f.listName ?? "a list", true)
     }
 
+    @ViewBuilder
     private var yourFields: some View {
         Section {
             if store.fields.isEmpty {
                 Text("No fields yet. Add them in Ligature on the web.").foregroundStyle(.secondary)
             }
-            ForEach(currentFields) { f in
-                VStack(alignment: .leading, spacing: 2) {
-                    FieldEditor(contactId: id, field: f, stored: stored(f))
-                    if f.listId != nil {
-                        Text(listName(f).name).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
+            ForEach(currentFields.filter { $0.listId == nil }) { f in
+                FieldEditor(contactId: id, field: f, stored: stored(f))
             }
         } header: {
             Text("Your Fields")
         } footer: {
             Text("Only in Ligature. Never synced to Google, iPhone or Mac.")
         }
+        .id("fields")
+        // A list’s own fields, under the list’s name.
+        ForEach(listFieldGroups, id: \.listId) { group in
+            Section {
+                ForEach(group.fields) { f in FieldEditor(contactId: id, field: f, stored: stored(f)) }
+            } header: {
+                Text(group.name)
+            }
+        }
+    }
+
+    private var listFieldGroups: [(listId: String, name: String, fields: [FieldDef])] {
+        var order: [String] = []
+        var byList: [String: [FieldDef]] = [:]
+        for f in currentFields {
+            guard let l = f.listId else { continue }
+            if byList[l] == nil { order.append(l) }
+            byList[l, default: []].append(f)
+        }
+        return order.map { l in (l, listName(byList[l]![0]).name, byList[l]!) }
     }
 
     private var pastSection: some View {

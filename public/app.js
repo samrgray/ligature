@@ -444,7 +444,9 @@ async function loadContacts() {
 }
 
 async function refreshSession() {
+  const prefs = S.session?.user?.prefs; // the table’s settings here may be newer than the server’s
   S.session = await api('/session');
+  if (prefs && S.session.user) S.session.user.prefs = { ...S.session.user.prefs, views: prefs.views };
   renderSidebar();
 }
 
@@ -734,42 +736,74 @@ function defaultColumns() {
     .map((id) => ({ id }));
 }
 
-/** Columns, widths and sort, saved on the server so they follow you between devices. */
+/** Which view’s table settings apply: each list, account, All Contacts and Archived has its own. */
+function viewKey(f = S.filter) {
+  if (f.type === 'group') return `list:${f.accountId}:${f.id}`;
+  if (f.type === 'account') return `account:${f.id}`;
+  return f.type === 'archive' ? 'archive' : 'all';
+}
+
+/**
+ * Columns, widths and sort for the current view, saved on the server so they follow you between
+ * devices. Each view is separate; one you haven’t changed starts from your original setup (plus a
+ * list’s own fields).
+ */
 function loadPrefs() {
   const p = S.session.user.prefs || {};
+  const key = viewKey();
+  const legacy = { columns: p.columns, sort: p.sort, nameSort: p.nameSort };
+  const views = p.views || {};
+  // A view you haven’t changed starts from the setup you had before views were separate
+  // (frozen, so changing one view never changes another), or the defaults.
+  const v = views[key] ?? legacy;
   const known = new Set(columnDefs(true).map((c) => c.id));
-  let cols = Array.isArray(p.columns)
-    ? p.columns.filter((c) => c && known.has(c.id)).map((c) => (Number(c.w) >= COL_MIN ? { id: c.id, w: Number(c.w) } : { id: c.id }))
+  let cols = Array.isArray(v.columns)
+    ? v.columns.filter((c) => c && known.has(c.id)).map((c) => (Number(c.w) >= COL_MIN ? { id: c.id, w: Number(c.w) } : { id: c.id }))
     : [];
   if (!cols.length) cols = defaultColumns();
+  if (!views[key] && S.filter.type === 'group') {
+    for (const f of S.session.fields) {
+      if (f.listId && fieldOnView(f) && !cols.some((c) => c.id === `f:${f.id}`)) cols.push({ id: `f:${f.id}` });
+    }
+  }
   S.cols = [cols.find((c) => c.id === 'name') ?? { id: 'name' }, ...cols.filter((c) => c.id !== 'name')];
-  S.sort = p.sort && known.has(p.sort.id) ? { id: p.sort.id, dir: p.sort.dir === 'desc' ? 'desc' : 'asc' } : { id: 'name', dir: 'asc' };
-  S.nameSort = p.nameSort === 'first' ? 'first' : 'last';
+  S.sort = v.sort && known.has(v.sort.id) ? { id: v.sort.id, dir: v.sort.dir === 'desc' ? 'desc' : 'asc' } : { id: 'name', dir: 'asc' };
+  S.nameSort = v.nameSort === 'first' ? 'first' : 'last';
+  S.prefsView = key;
+}
+
+/** Switches the table’s settings when you move to another list or view. */
+function syncViewPrefs() {
+  if (S.session?.user && S.prefsView !== viewKey()) loadPrefs();
 }
 
 window.matchMedia('(max-width: 820px)').addEventListener('change', () => applyWidths());
 
 let prefsTimer;
 function savePrefs() {
-  clearTimeout(prefsTimer);
-  prefsTimer = setTimeout(() => {
-    // Only the keys the table owns, so the iPhone’s settings (pinned lists) aren’t overwritten.
-    const set = {
+  // Saved under the view they belong to, right away, so switching lists can’t mix them up.
+  const prefs = (S.session.user.prefs = S.session.user.prefs || {});
+  prefs.views = {
+    ...(prefs.views || {}),
+    [S.prefsView ?? viewKey()]: {
       columns: S.cols.map((c) => (c.w ? { id: c.id, w: Math.round(c.w) } : { id: c.id })),
       sort: S.sort,
       nameSort: S.nameSort,
-    };
-    S.session.user.prefs = { ...(S.session.user.prefs || {}), ...set };
-    api('/prefs', { method: 'PATCH', body: { set } }).catch(handleError);
-  }, 500);
+    },
+  };
+  clearTimeout(prefsTimer);
+  // Only the key the table owns, so the iPhone’s settings (pinned lists) aren’t overwritten.
+  prefsTimer = setTimeout(() => api('/prefs', { method: 'PATCH', body: { set: { views: prefs.views } } }).catch(handleError), 500);
 }
 
 function activeColumns() {
+  syncViewPrefs();
   const defs = new Map(columnDefs().map((d) => [d.id, d]));
   return S.cols.filter((c) => defs.has(c.id)).map((c) => ({ ...defs.get(c.id), w: c.w || defs.get(c.id).w }));
 }
 
 function sortContacts(list) {
+  syncViewPrefs();
   const defs = columnDefs();
   const def = defs.find((d) => d.id === S.sort.id) ?? defs[0];
   const key = def.sort ?? def.text;
@@ -927,6 +961,7 @@ document.addEventListener('pointerdown', (e) => {
 });
 
 function renderGrid() {
+  syncViewPrefs();
   const table = $('#grid');
   if (!table) return;
   nameMenu();
@@ -1483,6 +1518,8 @@ function applyListResult(accountId, r) {
   renderGrid();
   if (S.detail && S.mode === 'view' && r.contacts?.some((c) => c.id === S.detail.id)) renderDetail();
   if (LP && $('#list-picker')?.matches(':popover-open')) fillListPicker();
+  // Search only covers a list’s fields while they’re on it, so refresh what it looks through.
+  if (r.contacts?.length && S.session.fields.some((f) => f.listId && f.accountId === accountId)) loadContacts().catch(() => {});
 }
 
 // ---- the picker: tick the lists these people are in
@@ -1772,7 +1809,13 @@ function renderDetail() {
   const phones = uniqueBy(c.phones, (p) => p.value.replace(/[^\d+]/g, ''));
   const emails = uniqueBy(c.emails, (e) => e.value.trim().toLowerCase());
   const rows = propRows(c);
-  const fields = S.session.fields.filter((f) => fieldApplies(f, d.account.id, c.groups));
+  const applying = S.session.fields.filter((f) => fieldApplies(f, d.account.id, c.groups));
+  const fields = applying.filter((f) => !f.listId);
+  // A list’s own fields, under the list’s name.
+  const listSections = [...new Set(applying.filter((f) => f.listId).map((f) => f.listId))].map((listId) => {
+    const lf = applying.filter((f) => f.listId === listId);
+    return { name: fieldListName(lf[0]), fields: lf };
+  });
   // Values in a list’s fields they’re no longer on, or whose list was deleted.
   const past = S.session.fields.filter((f) => !fieldApplies(f, d.account.id, c.groups) && (d.fields[f.id] ?? '') !== '');
   const hasOwn = Object.keys(d.fields).length > 0;
@@ -1823,15 +1866,23 @@ function renderDetail() {
         ${
           fields.length
             ? `<dl class="props">${fields
-                .map(
-                  (f) =>
-                    `<dt><label for="own-${h(f.id)}">${h(f.label)}</label>${f.listId ? `<span class="field-list">${h(fieldListName(f))}</span>` : ''}</dt><dd>${ownFieldInput(f, d.fields[f.id] ?? '')}</dd>`,
-                )
+                .map(ownFieldRow)
                 .join('')}</dl>`
-            : `<p class="empty">No fields yet. <button class="link" data-action="fields">Add one</button>.</p>`
+            : listSections.length
+              ? ''
+              : `<p class="empty">No fields yet. <button class="link" data-action="fields">Add one</button>.</p>`
         }
         <div class="own-status" id="own-status" role="status" aria-live="polite"></div>
       </section>
+
+      ${listSections
+        .map(
+          (l, i) => `<section class="own list-fields" aria-labelledby="lf-h-${i}">
+            <div class="own-h"><h2 id="lf-h-${i}">${h(l.name)}</h2><p>Fields for this list.</p></div>
+            <dl class="props">${l.fields.map(ownFieldRow).join('')}</dl>
+          </section>`,
+        )
+        .join('')}
 
       ${past.length ? pastFieldsSection(past, d) : ''}
 
@@ -1842,6 +1893,10 @@ function renderDetail() {
 
   for (const ta of el.querySelectorAll('textarea.own-input')) autosize(ta);
   for (const m of el.querySelectorAll('.menu[popover]')) anchorMenu(m);
+}
+
+function ownFieldRow(f) {
+  return `<dt><label for="own-${h(f.id)}">${h(f.label)}</label></dt><dd>${ownFieldInput(f, S.detail?.fields[f.id] ?? '')}</dd>`;
 }
 
 function pastValue(f, v) {
@@ -3562,10 +3617,17 @@ document.addEventListener('click', async (e) => {
           method: 'POST',
           body: { label, type: $('#new-field-type').value, list: listId ? { accountId, listId } : null },
         });
-        // A list’s field starts out as a column, shown whenever you view that list.
-        if (listId && !S.cols.some((c) => c.id === `f:${f.id}`)) {
-          S.cols.push({ id: `f:${f.id}` });
-          savePrefs();
+        // A list’s field starts out as a column in that list’s table.
+        if (listId) {
+          const key = viewKey({ type: 'group', id: listId, accountId });
+          const saved = S.session.user.prefs?.views?.[key];
+          if (key === S.prefsView) {
+            S.cols.push({ id: `f:${f.id}` });
+            savePrefs();
+          } else if (saved?.columns) {
+            saved.columns.push({ id: `f:${f.id}` });
+            api('/prefs', { method: 'PATCH', body: { set: { views: S.session.user.prefs.views } } }).catch(handleError);
+          }
         }
         await fieldsChanged();
         renderGrid();

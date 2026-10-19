@@ -9,7 +9,7 @@ export const onRequestPut: PagesFunction<Env, string, Data> = async ({ request, 
   const { prefs } = await readJson<{ prefs?: unknown }>(request);
   if (!prefs || typeof prefs !== 'object' || Array.isArray(prefs)) throw new HttpError(400, 'Settings must be an object.');
   const text = JSON.stringify(prefs);
-  if (text.length > 20000) throw new HttpError(400, 'Settings are too large.');
+  if (text.length > 200000) throw new HttpError(400, 'Settings are too large.');
   await env.DB.prepare('UPDATE users SET prefs = ?2 WHERE id = ?1').bind(user.id, text).run();
   return json({ ok: true });
 };
@@ -29,7 +29,7 @@ export const onRequestPatch: PagesFunction<Env, string, Data> = async ({ request
   }
   Object.assign(prefs, set);
   const text = JSON.stringify(prefs);
-  if (text.length > 20000) throw new HttpError(400, 'Settings are too large.');
+  if (text.length > 200000) throw new HttpError(400, 'Settings are too large.');
   await env.DB.prepare('UPDATE users SET prefs = ?2 WHERE id = ?1').bind(user.id, text).run();
   return json({ ok: true, prefs });
 };
