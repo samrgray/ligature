@@ -28,6 +28,7 @@ final class Store {
     var details: [String: ContactDetail] = [:]
     /// Lists shown as tabs above the contacts, in order.
     var pinned: [ListRef] = []
+    var listParents: [ListParent] = []
     /// Your order for all lists (pinned ones are ordered by `pinned`).
     var listOrder: [ListRef] = []
     var syncing = false
@@ -173,6 +174,7 @@ final class Store {
             fields = s.fields ?? []
             pinned = s.user?.prefs?.pinnedLists ?? []
             listOrder = s.user?.prefs?.listOrder ?? []
+            listParents = s.user?.prefs?.listParents ?? []
             let c: ContactsResponse = try await api.get("/contacts")
             contacts = c.contacts
             relationships = c.relationships ?? []
@@ -348,8 +350,82 @@ final class Store {
         }.map { $0.element }
     }
 
+    /// The other lists, as a tree: each list followed by the lists inside it.
     var unpinnedLists: [ListEntry] {
-        orderedLists.filter { !pinned.contains($0.ref) }
+        tree(orderedLists.filter { !pinned.contains($0.ref) }).map(\.entry)
+    }
+
+    // MARK: - Nested lists
+
+    /// A list’s parent, if it still exists (and the nesting doesn’t loop).
+    func parentOf(_ r: ListRef) -> String? {
+        let groups = rawLists(r.accountId)
+        func up(_ id: String) -> String? {
+            guard let p = listParents.first(where: { $0.accountId == r.accountId && $0.id == id })?.parentId,
+                  p != id, groups.contains(where: { $0.id == p }) else { return nil }
+            return p
+        }
+        guard let first = up(r.id) else { return nil }
+        var seen: Set<String> = [r.id]
+        var p: String? = first
+        while let x = p {
+            if seen.contains(x) { return nil }
+            seen.insert(x)
+            p = up(x)
+        }
+        return first
+    }
+
+    /// Every list inside this one, all the way down.
+    func descendants(of r: ListRef) -> [String] {
+        var out: [String] = []
+        func walk(_ id: String) {
+            for g in rawLists(r.accountId) where g.id != r.id && !out.contains(g.id) && parentOf(ListRef(accountId: r.accountId, id: g.id)) == id {
+                out.append(g.id)
+                walk(g.id)
+            }
+        }
+        walk(r.id)
+        return out
+    }
+
+    func depth(of r: ListRef) -> Int {
+        var d = 0
+        var p = parentOf(r)
+        while let x = p, d < 8 { d += 1; p = parentOf(ListRef(accountId: r.accountId, id: x)) }
+        return d
+    }
+
+    /// Lists in order, each followed by its sublists. A list whose parent isn’t among them is top level.
+    func tree(_ entries: [ListEntry]) -> [(entry: ListEntry, depth: Int)] {
+        var out: [(ListEntry, Int)] = []
+        func visit(_ parent: ListRef?, _ depth: Int) {
+            for e in entries {
+                let p = parentOf(e.ref)
+                let isRoot = p == nil || !entries.contains { $0.ref == ListRef(accountId: e.ref.accountId, id: p!) }
+                let matches = parent == nil ? isRoot : (!isRoot && e.ref.accountId == parent!.accountId && p == parent!.id)
+                guard matches, !out.contains(where: { $0.0.ref == e.ref }) else { continue }
+                out.append((e, depth))
+                visit(e.ref, depth + 1)
+            }
+        }
+        visit(nil, 0)
+        return out.map { (entry: $0.0, depth: $0.1) }
+    }
+
+    /// Puts a list inside another, or back at the top level with nil.
+    func nest(_ r: ListRef, inside parentId: String?) async {
+        if let p = parentId, p == r.id || descendants(of: r).contains(p) { return }
+        listParents.removeAll { $0.accountId == r.accountId && $0.id == r.id }
+        if let p = parentId { listParents.append(ListParent(accountId: r.accountId, id: r.id, parentId: p)) }
+        saveCache()
+        if demo { return }
+        do {
+            let enc = listParents.map { ["accountId": $0.accountId, "id": $0.id, "parentId": $0.parentId] }
+            let _: Empty = try await api.patch("/prefs", ["set": ["listParents": enc]])
+        } catch {
+            handle(error)
+        }
     }
 
     /// Reorder pinned lists (drag in Manage Lists).
@@ -751,6 +827,7 @@ final class Store {
         var details: [String: ContactDetail]
         var pinned: [ListRef]?
         var listOrder: [ListRef]?
+        var listParents: [ListParent]?
         var relationships: [Relationship]?
         var archived: [ContactRow]?
     }
@@ -763,7 +840,7 @@ final class Store {
 
     private func saveCache() {
         guard !demo else { return }
-        let cache = Cache(accounts: accounts, fields: fields, contacts: contacts, details: details, pinned: pinned, listOrder: listOrder, relationships: relationships, archived: archived)
+        let cache = Cache(accounts: accounts, fields: fields, contacts: contacts, details: details, pinned: pinned, listOrder: listOrder, listParents: listParents, relationships: relationships, archived: archived)
         if let data = try? JSONEncoder().encode(cache) {
             try? data.write(to: cacheURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         }
@@ -777,6 +854,7 @@ final class Store {
         details = c.details
         pinned = c.pinned ?? []
         listOrder = c.listOrder ?? []
+        listParents = c.listParents ?? []
         relationships = c.relationships ?? []
         archived = c.archived ?? []
         return !contacts.isEmpty

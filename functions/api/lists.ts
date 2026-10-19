@@ -6,6 +6,24 @@ import { refreshContacts } from '../../lib/contacts';
 
 const MAX_MEMBERS = 1000;
 
+/** Nesting lives only in Ligature (in your settings). A deleted list’s sublists move up a level. */
+async function liftSublists(db: D1Database, userId: string, accountId: string, listId: string) {
+  const row = await db.prepare('SELECT prefs FROM users WHERE id = ?1').bind(userId).first<{ prefs: string | null }>();
+  let prefs: { listParents?: { accountId: string; id: string; parentId: string }[] } & Record<string, unknown>;
+  try {
+    prefs = JSON.parse(row?.prefs || '{}') ?? {};
+  } catch {
+    return;
+  }
+  const parents = Array.isArray(prefs.listParents) ? prefs.listParents : [];
+  if (!parents.some((x) => x.accountId === accountId && (x.parentId === listId || x.id === listId))) return;
+  const up = parents.find((x) => x.accountId === accountId && x.id === listId)?.parentId;
+  prefs.listParents = parents
+    .filter((x) => !(x.accountId === accountId && x.id === listId))
+    .flatMap((x) => (x.accountId === accountId && x.parentId === listId ? (up ? [{ ...x, parentId: up }] : []) : [x]));
+  await db.prepare('UPDATE users SET prefs = ?2 WHERE id = ?1').bind(userId, JSON.stringify(prefs)).run();
+}
+
 // POST /api/lists — manage lists (Google calls them labels). Changes go straight to Google.
 //   { action: 'create', accountId, name }
 //   { action: 'rename', accountId, groupId, name }
@@ -85,6 +103,7 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
           ).results
         : [];
       changed = await refreshContacts(env, account, rows);
+      await liftSublists(env.DB, user.id, account.id, g.id);
       break;
     }
     case 'members': {

@@ -205,7 +205,8 @@ function renderShell() {
       <main class="main">
         <div class="main-bar">
           <button type="button" class="icon-btn sidebar-btn" id="sidebar-btn" data-action="toggle-sidebar" aria-controls="sidebar">${ICON.sidebar}</button>
-          <div class="title-block"><h1 id="view-title">All Contacts</h1><span class="count" id="list-count"></span></div>
+          <div class="title-block"><h1 id="view-title">All Contacts</h1><span class="count" id="list-count"></span>
+            <label class="sub-toggle" id="sub-toggle" hidden title="Also show people in this list’s sublists"><input type="checkbox" data-sub-toggle> Include sublists</label></div>
           <label class="photo-zoom" title="Photo size">
             <svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6" r="3" fill="currentColor"/><path d="M2.5 15a5.5 5.5 0 0 1 11 0" fill="currentColor"/></svg>
             <input type="range" id="photo-zoom" min="${PHOTO.min}" max="${PHOTO.max}" step="2" value="${S.photoSize}" aria-label="Photo size">
@@ -507,10 +508,13 @@ const inArchive = () => S.filter.type === 'archive';
 function matchingContacts() {
   const q = S.query.trim().toLowerCase();
   const f = S.filter;
+  syncViewPrefs();
+  // A list, plus everyone in its sublists when you’ve chosen to include them.
+  const viewGroups = f.type === 'group' ? [f.id, ...(S.withSub ? descendantsOf(f.accountId, f.id) : [])] : [];
   return sortContacts(
     (inArchive() ? S.archived : S.contacts).filter((c) => {
       if (f.type === 'account' && c.accountId !== f.id) return false;
-      if (f.type === 'group' && (c.accountId !== f.accountId || !c.groups.includes(f.id))) return false;
+      if (f.type === 'group' && (c.accountId !== f.accountId || !viewGroups.some((g) => c.groups.includes(g)))) return false;
       if (q && !q.split(/\s+/).every((w) => c.search.includes(w))) return false;
       return true;
     }),
@@ -551,11 +555,16 @@ function renderSidebar() {
       <div class="nav-h-row"><div class="nav-h">Lists</div>${
         accounts.length ? `<button type="button" class="nav-h-btn" data-action="new-list" aria-label="New list" title="New List">${ICON.plus}</button>` : ''
       }</div>
-      ${sortPinnedFirst(groups)
-        .map((g) => {
+      ${listTree(groups)
+        .map(({ g, depth, kids, collapsed }) => {
           if (LE?.mode === 'rename' && LE.accountId === g.accountId && LE.id === g.id) return listNameForm(LE.value ?? g.name);
           const current = f.type === 'group' && f.id === g.id && f.accountId === g.accountId;
-          return `<div class="nav-row${current ? ' current' : ''}">
+          return `<div class="nav-row${current ? ' current' : ''}" data-depth="${Math.min(depth, 8)}">
+            ${
+              kids
+                ? `<button type="button" class="nav-twisty${collapsed ? ' collapsed' : ''}" data-action="list-toggle" data-id="${h(g.id)}" data-account="${h(g.accountId)}" aria-expanded="${!collapsed}" aria-label="${collapsed ? 'Show' : 'Hide'} lists inside ${h(g.name)}">${ICON.down}</button>`
+                : ''
+            }
             <button class="nav-item" data-filter="group" data-id="${h(g.id)}" data-account="${h(g.accountId)}" aria-current="${current}">
               <span>${h(g.name)}${multi ? ` <span class="count">· ${h(g.accountLabel)}</span>` : ''}${
                 isPinned(g.accountId, g.id) ? `<span class="pin-mark" title="Pinned" aria-label="Pinned">${ICON.pin}</span>` : ''
@@ -783,6 +792,7 @@ function loadPrefs() {
   S.cols = [cols.find((c) => c.id === 'name') ?? { id: 'name' }, ...cols.filter((c) => c.id !== 'name')];
   S.sort = v.sort && known.has(v.sort.id) ? { id: v.sort.id, dir: v.sort.dir === 'desc' ? 'desc' : 'asc' } : { id: 'name', dir: 'asc' };
   S.nameSort = v.nameSort === 'first' ? 'first' : 'last';
+  S.withSub = views[key]?.withSub === true; // off unless you’ve turned it on for this list
   S.prefsView = key;
 }
 
@@ -803,6 +813,7 @@ function savePrefs() {
       columns: S.cols.map((c) => (c.w ? { id: c.id, w: Math.round(c.w) } : { id: c.id })),
       sort: S.sort,
       nameSort: S.nameSort,
+      ...(S.withSub ? { withSub: true } : {}),
     },
   };
   clearTimeout(prefsTimer);
@@ -983,6 +994,12 @@ function renderGrid() {
   const cols = activeColumns();
   $('#view-title').textContent = viewTitle();
   $('#list-count').textContent = `${items.length} ${items.length === 1 ? 'contact' : 'contacts'}`;
+  const sub = $('#sub-toggle');
+  const hasSubs = S.filter.type === 'group' && descendantsOf(S.filter.accountId, S.filter.id).length > 0;
+  if (sub) {
+    sub.hidden = !hasSubs;
+    sub.querySelector('input').checked = !!S.withSub;
+  }
 
   const ind = (id) => (S.sort.id === id ? (S.sort.dir === 'asc' ? ICON.up : ICON.down) : '');
   const head = `<thead><tr>
@@ -1261,6 +1278,114 @@ function accountById(id) {
 }
 
 /** Pinned lists first, in the order they were pinned; then the rest as before. */
+// ---- nested lists (only in Ligature; Google’s labels stay flat)
+
+function listParents() {
+  const p = S.session.user.prefs?.listParents;
+  return Array.isArray(p) ? p.filter((x) => x && typeof x.id === 'string' && typeof x.accountId === 'string' && typeof x.parentId === 'string') : [];
+}
+
+/** A list’s parent, if it has one that still exists. */
+function parentOf(accountId, id) {
+  const e = listParents().find((x) => x.accountId === accountId && x.id === id);
+  if (!e || e.parentId === id || !accountById(accountId)?.groups.some((g) => g.id === e.parentId)) return null;
+  // A loop (which saving never makes) would hide lists; treat it as top level.
+  const seen = new Set([id]);
+  for (let p = e.parentId; p; ) {
+    if (seen.has(p)) return null;
+    seen.add(p);
+    const up = listParents().find((x) => x.accountId === accountId && x.id === p);
+    p = up && accountById(accountId)?.groups.some((g) => g.id === up.parentId) ? up.parentId : null;
+  }
+  return e.parentId;
+}
+
+/** Every list inside this one, all the way down. */
+function descendantsOf(accountId, id) {
+  const groups = accountById(accountId)?.groups ?? [];
+  const out = [];
+  const walk = (pid) => {
+    for (const g of groups) {
+      if (g.id !== id && !out.includes(g.id) && parentOf(accountId, g.id) === pid) {
+        out.push(g.id);
+        walk(g.id);
+      }
+    }
+  };
+  walk(id);
+  return out;
+}
+
+const COLLAPSED_KEY = 'ligature-collapsed-lists';
+const collapsedLists = (() => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+})();
+
+function toggleCollapsed(accountId, id) {
+  const k = `${accountId}|${id}`;
+  if (collapsedLists.has(k)) collapsedLists.delete(k);
+  else collapsedLists.add(k);
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsedLists]));
+  } catch {}
+  renderSidebar();
+}
+
+/** Lists as an indented tree, in your order, skipping the insides of collapsed ones. */
+function listTree(groups) {
+  const ordered = sortPinnedFirst(groups);
+  const rows = [];
+  const visit = (accountId, parent, depth) => {
+    for (const g of ordered) {
+      if ((accountId && g.accountId !== accountId) || parentOf(g.accountId, g.id) !== parent) continue;
+      const kids = ordered.some((x) => x.accountId === g.accountId && parentOf(x.accountId, x.id) === g.id);
+      const collapsed = collapsedLists.has(`${g.accountId}|${g.id}`);
+      rows.push({ g, depth, kids, collapsed });
+      if (kids && !collapsed) visit(g.accountId, g.id, depth + 1);
+    }
+  };
+  visit(null, null, 0);
+  return rows;
+}
+
+async function saveListLayout(set) {
+  S.session.user.prefs = { ...(S.session.user.prefs || {}), ...set };
+  renderSidebar();
+  renderGrid();
+  try {
+    await api('/prefs', { method: 'PATCH', body: { set } });
+  } catch (e) {
+    handleError(e);
+  }
+}
+
+/** Puts a list inside another (or at the top level, with parentId null), as its last sublist. */
+async function nestList(me, parentId) {
+  if (parentId && (parentId === me.id || descendantsOf(me.accountId, me.id).includes(parentId))) return toast('A list can’t go inside itself.');
+  const parents = listParents().filter((x) => !(x.accountId === me.accountId && x.id === me.id));
+  if (parentId) parents.push({ accountId: me.accountId, id: me.id, parentId });
+  // In your order, right after the new parent’s last sublist.
+  const all = sortPinnedFirst(S.session.accounts.flatMap((a) => a.groups.map((g) => ({ accountId: a.id, id: g.id })))).map((g) => ({ accountId: g.accountId, id: g.id }));
+  const moving = [me, ...descendantsOf(me.accountId, me.id).map((id) => ({ accountId: me.accountId, id }))];
+  const isMoving = (x) => moving.some((m) => m.accountId === x.accountId && m.id === x.id);
+  const rest = all.filter((x) => !isMoving(x));
+  let at = rest.length;
+  if (parentId) {
+    const family = [parentId, ...descendantsOf(me.accountId, parentId)];
+    const lastIdx = rest.reduce((acc, x, i) => (x.accountId === me.accountId && family.includes(x.id) ? i : acc), -1);
+    at = lastIdx + 1;
+  }
+  rest.splice(at, 0, ...moving.filter((m) => all.some((x) => x.accountId === m.accountId && x.id === m.id)));
+  if (parentId) collapsedLists.delete(`${me.accountId}|${parentId}`);
+  await saveListLayout({ listParents: parents, listOrder: rest });
+  const name = (id) => accountById(me.accountId)?.groups.find((g) => g.id === id)?.name ?? 'the list';
+  toast(parentId ? `Moved ${name(me.id)} inside ${name(parentId)}.` : `Moved ${name(me.id)} to the top level.`, 2500);
+}
+
 function sortPinnedFirst(groups) {
   const key = (x) => `${x.accountId}\n${x.id}`;
   const pins = pinnedLists().map(key);
@@ -1292,18 +1417,21 @@ function orderedLists(accountId) {
 }
 
 // Drag a list in the sidebar to reorder it. Dropping it among the pinned lists pins it;
-// dropping a pinned one below them unpins it.
+// dropping a pinned one below them unpins it. Dropping it onto another list puts it inside.
 let suppressListClick = false;
 document.addEventListener('pointerdown', (e) => {
   const row = e.target.closest?.('nav[aria-label="Lists"] .nav-row');
-  if (!row || e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.nav-more') || LE) return;
+  if (!row || e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.nav-more, .nav-twisty') || LE) return;
   const startY = e.clientY;
   const item = row.querySelector('.nav-item');
   const me = { accountId: item.dataset.account, id: item.dataset.id };
+  const inside = descendantsOf(me.accountId, me.id);
   let dragging = false;
   let line = null;
-  let dropIndex = null;
+  let drop = null; // { index } between rows, or { into: id } onto a row
   const rowsNow = () => [...document.querySelectorAll('nav[aria-label="Lists"] .nav-row')];
+  const idOf = (r) => r.querySelector('.nav-item')?.dataset;
+  const clearInto = () => document.querySelector('.nav-row.drop-into')?.classList.remove('drop-into');
   const move = (ev) => {
     if (!dragging) {
       if (Math.abs(ev.clientY - startY) < 5) return;
@@ -1315,13 +1443,28 @@ document.addEventListener('pointerdown', (e) => {
       line.className = 'list-drop';
       document.body.append(line);
     }
-    const others = rowsNow().filter((r) => r !== row);
+    // Your own sublists move with you, so they aren’t places to drop.
+    const others = rowsNow().filter((r) => r !== row && !(idOf(r)?.account === me.accountId && inside.includes(idOf(r)?.id)));
+    clearInto();
+    // The middle of another list in the same account: put it inside.
+    const over = others.find((r) => {
+      const b = r.getBoundingClientRect();
+      return ev.clientY >= b.top + b.height * 0.25 && ev.clientY <= b.bottom - b.height * 0.25;
+    });
+    const o = over && idOf(over);
+    if (o && o.account === me.accountId && o.id !== 'contactGroups/myContacts') {
+      drop = { into: o.id };
+      over.classList.add('drop-into');
+      line.hidden = true;
+      return;
+    }
+    line.hidden = false;
     let i = others.findIndex((r) => {
       const b = r.getBoundingClientRect();
       return ev.clientY < b.top + b.height / 2;
     });
     if (i < 0) i = others.length;
-    dropIndex = i;
+    drop = { index: i, before: others[i] ? idOf(others[i]) : null, after: others[i - 1] ? idOf(others[i - 1]) : null };
     const ref = others[i] ?? others[others.length - 1];
     if (!ref) return;
     const b = ref.getBoundingClientRect();
@@ -1337,11 +1480,13 @@ document.addEventListener('pointerdown', (e) => {
     if (!dragging) return;
     row.classList.remove('row-dragging');
     document.body.classList.remove('moving-list');
+    clearInto();
     line?.remove();
     suppressListClick = true;
     setTimeout(() => (suppressListClick = false), 0);
-    if (ev.type === 'pointercancel' || dropIndex == null) return;
-    reorderLists(me, dropIndex);
+    if (ev.type === 'pointercancel' || !drop) return;
+    if (drop.into) return nestList(me, drop.into);
+    reorderLists(me, drop);
   };
   row.addEventListener('pointermove', move);
   row.addEventListener('pointerup', up);
@@ -1358,26 +1503,47 @@ document.addEventListener(
   true,
 );
 
-async function reorderLists(me, index) {
+/**
+ * Moves a list (with its sublists) to a spot between two rows. It joins the level of the list
+ * below the spot (or the one above, at the end of a group).
+ */
+async function reorderLists(me, drop) {
   const same = (x) => x.accountId === me.accountId && x.id === me.id;
-  const shown = [...document.querySelectorAll('nav[aria-label="Lists"] .nav-item')].map((el) => ({ accountId: el.dataset.account, id: el.dataset.id }));
-  const pins = pinnedLists().filter((x) => shown.some((y) => y.accountId === x.accountId && y.id === x.id));
-  const others = shown.filter((x) => !same(x));
-  const pinnedBefore = pins.filter((x) => !same(x)).length;
-  const wasPinned = pins.some(same);
-  // Above the last pinned list: pinned. Below the first unpinned: not. Right at the line: as it was.
-  const pinned = index < pinnedBefore ? true : index > pinnedBefore ? false : wasPinned;
-  others.splice(index, 0, me);
-  const isPin = (x) => (same(x) ? pinned : pins.some((p) => p.accountId === x.accountId && p.id === x.id));
-  const nextPins = others.filter(isPin);
-  const set = { pinnedLists: nextPins, listOrder: others };
-  S.session.user.prefs = { ...(S.session.user.prefs || {}), ...set };
-  renderSidebar();
-  try {
-    await api('/prefs', { method: 'PATCH', body: { set } });
-  } catch (e) {
-    handleError(e);
+  const key = (x) => `${x.accountId}|${x.id}`;
+  const all = sortPinnedFirst(S.session.accounts.flatMap((a) => a.groups.map((g) => ({ accountId: a.id, id: g.id })))).map((g) => ({ accountId: g.accountId, id: g.id }));
+  const moving = [me, ...descendantsOf(me.accountId, me.id).map((id) => ({ accountId: me.accountId, id }))];
+  const movingKeys = new Set(moving.map(key));
+  const rest = all.filter((x) => !movingKeys.has(key(x)));
+  const before = drop.before && { accountId: drop.before.account, id: drop.before.id };
+  const after = drop.after && { accountId: drop.after.account, id: drop.after.id };
+  let at = before ? rest.findIndex((x) => key(x) === key(before)) : rest.length;
+  if (at < 0) at = rest.length;
+  rest.splice(at, 0, ...moving);
+
+  // The new level: the list below’s parent; at the very end, the list above’s.
+  const anchor = before ?? after;
+  const parentId = anchor && anchor.accountId === me.accountId ? parentOf(anchor.accountId, anchor.id) : null;
+  const parents = listParents().filter((x) => !same(x));
+  if (parentId) parents.push({ accountId: me.accountId, id: me.id, parentId });
+
+  // Pinning works among the top-level lists, as before.
+  const shownRoots = [...document.querySelectorAll('nav[aria-label="Lists"] .nav-row')]
+    .filter((r) => r.dataset.depth === '0')
+    .map((r) => r.querySelector('.nav-item').dataset)
+    .map((d) => ({ accountId: d.account, id: d.id }));
+  const pins = pinnedLists().filter((x) => shownRoots.some((y) => key(y) === key(x)));
+  let pinned = pins.some(same);
+  if (!parentId) {
+    const rootsAfter = rest.filter((x) => !parentOf(x.accountId, x.id) || same(x));
+    const myIdx = rootsAfter.findIndex(same);
+    const pinsWithout = pins.filter((x) => !same(x));
+    const lastPin = Math.max(-1, ...pinsWithout.map((p) => rootsAfter.findIndex((x) => key(x) === key(p))));
+    const firstUnpinned = rootsAfter.findIndex((x) => !same(x) && !pinsWithout.some((p) => key(p) === key(x)));
+    if (myIdx < lastPin) pinned = true;
+    else if (firstUnpinned >= 0 && myIdx > firstUnpinned) pinned = false;
   }
+  const nextPins = rest.filter((x) => (same(x) ? pinned && !parentId : pins.some((p) => key(p) === key(x))));
+  await saveListLayout({ pinnedLists: nextPins, listOrder: rest, listParents: parents });
 }
 
 function listNameForm(value) {
@@ -1480,12 +1646,22 @@ function openListMenu(btn) {
   LM = { accountId: btn.dataset.account, id: btn.dataset.id };
   const m = listMenu();
   const g = accountById(LM.accountId)?.groups.find((x) => x.id === LM.id);
+  const inside = descendantsOf(LM.accountId, LM.id);
+  const targets = orderedLists(LM.accountId).filter((x) => x.id !== LM.id && x.id !== 'contactGroups/myContacts' && !inside.includes(x.id));
+  const parent = parentOf(LM.accountId, LM.id);
+  const moveMenu = `<div class="menu-sep"></div><div class="menu-h">Move inside</div>${
+    parent ? '<button type="button" role="menuitem" data-action="list-unnest"><span class="menu-check"></span>Top Level</button>' : ''
+  }${targets
+    .map(
+      (x) => `<button type="button" role="menuitem" data-action="list-nest" data-parent="${h(x.id)}"${x.id === parent ? ' aria-checked="true"' : ''}><span class="menu-check">${x.id === parent ? ICON.check : ''}</span>${h(x.name)}</button>`,
+    )
+    .join('')}`;
   m.innerHTML = `<button type="button" role="menuitem" data-action="list-pin"><span class="menu-check"></span>${isPinned(LM.accountId, LM.id) ? 'Unpin' : 'Pin to Top'}</button>${
     g?.system
       ? ''
       : `<button type="button" role="menuitem" data-action="list-rename"><span class="menu-check"></span>Rename…</button>
          <button type="button" role="menuitem" data-action="list-delete" class="danger-item"><span class="menu-check"></span>Delete…</button>`
-  }`;
+  }${targets.length || parent ? moveMenu : ''}`;
   m.showPopover();
   placePopover(m, btn);
   m.querySelector('button')?.focus();
@@ -1511,6 +1687,12 @@ async function deleteList(target) {
   if (!ok) return;
   try {
     const r = await api('/lists', { method: 'POST', body: { action: 'delete', accountId: target.accountId, groupId: g.id } });
+    // Its sublists move up a level (the server does the same).
+    const up = parentOf(target.accountId, g.id);
+    const parents = listParents()
+      .filter((x) => !(x.accountId === target.accountId && x.id === g.id))
+      .flatMap((x) => (x.accountId === target.accountId && x.parentId === g.id ? (up ? [{ ...x, parentId: up }] : []) : [x]));
+    S.session.user.prefs = { ...(S.session.user.prefs || {}), listParents: parents };
     if (S.filter.type === 'group' && S.filter.id === g.id && S.filter.accountId === target.accountId) S.filter = { type: 'all' };
     applyListResult(target.accountId, r);
     toast(`Deleted ${g.name}.`, 2500);
@@ -3726,6 +3908,14 @@ document.addEventListener('click', async (e) => {
       return startListName('rename', LM);
     case 'list-delete':
       return deleteList(LM);
+    case 'list-nest':
+      $('#list-menu')?.hidePopover();
+      return LM && nestList(LM, t.dataset.parent);
+    case 'list-unnest':
+      $('#list-menu')?.hidePopover();
+      return LM && nestList(LM, null);
+    case 'list-toggle':
+      return toggleCollapsed(t.dataset.account, t.dataset.id);
     case 'lp-new':
       return showPickerNewList();
     case 'archive-selected':
@@ -3989,6 +4179,13 @@ document.addEventListener('change', async (e) => {
     } catch (err) {
       handleError(err);
     }
+  }
+  if (t.matches?.('[data-sub-toggle]')) {
+    S.withSub = t.checked;
+    savePrefs();
+    clearSelection();
+    renderGrid();
+    return;
   }
   if (t.dataset.fieldList) {
     try {

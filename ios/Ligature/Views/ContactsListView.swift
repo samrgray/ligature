@@ -9,6 +9,20 @@ struct ContactsListView: View {
     @Environment(Store.self) private var store
     @Environment(\.openURL) private var openURL
     @AppStorage("sortByFirst") private var sortByFirst = false
+    /// Lists you’ve chosen to show with their sublists’ people (off by default), as “account|list” lines.
+    @AppStorage("withSublists") private var withSublists = ""
+
+    private func includesSublists(_ f: ListFilter) -> Bool {
+        guard case let .list(accountId, id) = f else { return false }
+        return withSublists.split(separator: "\n").contains { $0 == "\(accountId)|\(id)" }
+    }
+
+    private func setIncludesSublists(_ f: ListFilter, _ on: Bool) {
+        guard case let .list(accountId, id) = f else { return }
+        var keys = withSublists.split(separator: "\n").map(String.init).filter { $0 != "\(accountId)|\(id)" }
+        if on { keys.append("\(accountId)|\(id)") }
+        withSublists = keys.joined(separator: "\n")
+    }
     @State private var query = ""
     @State private var filter: ListFilter = .all
     @State private var path: [String] = []
@@ -97,7 +111,8 @@ struct ContactsListView: View {
     private func visible(for filter: ListFilter) -> [ContactRow] {
         var items = store.contacts
         if case let .list(accountId, id) = filter {
-            items = items.filter { $0.accountId == accountId && $0.groups.contains(id) }
+            let ids = [id] + (includesSublists(filter) ? store.descendants(of: ListRef(accountId: accountId, id: id)) : [])
+            items = items.filter { c in c.accountId == accountId && ids.contains { c.groups.contains($0) } }
         }
         let terms = query.lowercased().split(separator: " ").map(String.init)
         if !terms.isEmpty {
@@ -514,11 +529,19 @@ struct ContactsListView: View {
             Picker("Show", selection: $filter) {
                 Text("All Contacts").tag(ListFilter.all)
                 ForEach(store.accounts) { a in
-                    ForEach(a.groups) { g in
-                        Text(store.accounts.count > 1 ? "\(g.name) · \(a.label ?? a.providerName)" : g.name)
+                    ForEach(store.tree(store.orderedLists.filter { $0.ref.accountId == a.id }), id: \.entry.ref) { item in
+                        let g = item.entry.list
+                        let indent = String(repeating: "\u{2003}", count: item.depth)
+                        Text(indent + (store.accounts.count > 1 ? "\(g.name) · \(a.label ?? a.providerName)" : g.name))
                             .tag(ListFilter.list(accountId: a.id, id: g.id))
                     }
                 }
+            }
+            if case let .list(accountId, id) = filter, !store.descendants(of: ListRef(accountId: accountId, id: id)).isEmpty {
+                Toggle("Include Sublists", isOn: Binding(
+                    get: { includesSublists(filter) },
+                    set: { on in setIncludesSublists(filter, on) }
+                ))
             }
             Divider()
             Button { compose = ComposeTarget(ids: visible.map(\.id)) } label: {

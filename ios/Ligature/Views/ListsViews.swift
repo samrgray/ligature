@@ -106,12 +106,13 @@ struct ManageListsView: View {
                 Section {
                     ForEach(store.unpinnedLists) { item in
                         row(item.list, accountId: item.ref.accountId)
+                            .padding(.leading, CGFloat(store.depth(of: item.ref)) * 18)
                     }
                     .onMove { from, to in Task { await store.moveUnpinned(from: from, to: to) } }
                 } header: {
                     Text(store.pinnedLists.isEmpty ? "" : "Lists")
                 } footer: {
-                    Text("Press and hold a list to drag it. Favorites, Family, Friends and Coworkers are built into Google: you can add people to them, but not rename or delete them.")
+                    Text("Press and hold a list to drag it, or to put it inside another list (nesting is only in Ligature). Favorites, Family, Friends and Coworkers are built into Google: you can add people to them, but not rename or delete them.")
                 }
             }
             .navigationTitle("Lists")
@@ -173,6 +174,21 @@ struct ManageListsView: View {
             guard !g.system else { return }
             name = g.name
             naming = Naming(accountId: accountId, list: g)
+        }
+        .contextMenu {
+            let ref = ListRef(accountId: accountId, id: g.id)
+            let inside = store.descendants(of: ref)
+            let parent = store.parentOf(ref)
+            Menu("Move Inside") {
+                if parent != nil {
+                    Button("Top Level") { Task { await store.nest(ref, inside: nil) } }
+                }
+                ForEach(store.lists(for: accountId).filter { $0.id != g.id && $0.id != "contactGroups/myContacts" && !inside.contains($0.id) }) { t in
+                    Button { Task { await store.nest(ref, inside: t.id) } } label: {
+                        if t.id == parent { Label(t.name, systemImage: "checkmark") } else { Text(t.name) }
+                    }
+                }
+            }
         }
         .swipeActions {
             if !g.system {

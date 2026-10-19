@@ -20,6 +20,14 @@ struct SessionUser: Codable, Hashable {
 struct Prefs: Codable, Hashable {
     var pinnedLists: [ListRef]?
     var listOrder: [ListRef]?
+    var listParents: [ListParent]?
+}
+
+/** A list nested inside another (only in Ligature; Google’s labels stay flat). */
+struct ListParent: Codable, Hashable {
+    let accountId: String
+    let id: String
+    let parentId: String
 }
 
 /// A list in a particular account.
