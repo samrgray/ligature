@@ -1,6 +1,19 @@
 import type { Data, Env } from '../../lib/types';
 import { requireUser } from '../../lib/session';
 
+// What a backup leaves out. Everything else is included automatically: any table with a
+// user_id column, so data from new features is backed up without touching this file.
+// Only add to these lists for things that are secret, short-lived or rebuildable.
+const SKIP_TABLES = new Set([
+  'users', // exported separately, below
+  'sessions', // sign-in sessions
+  'oauth_states', // half-finished sign-ins
+  'app_codes', // one-time iPhone sign-in codes
+  'geocodes', // a cache of OpenStreetMap lookups, shared and rebuildable
+  'meta', // schema version and rate-limit locks
+]);
+const SKIP_COLUMNS = new Set(['user_id', 'credentials_enc', 'sync_token']);
+
 const parse = (s: unknown) => {
   if (typeof s !== 'string' || !s) return s ?? null;
   try {
@@ -10,39 +23,41 @@ const parse = (s: unknown) => {
   }
 };
 
-// GET /api/backup → everything Ligature keeps for you, as one JSON file to download:
-// each contact’s full Google card (as last synced), your fields and their values,
-// relationships, map pins, the archive (with photos), lists and settings.
-// Sign-in tokens and sessions are left out.
+/** A row as JSON: secrets dropped, and *_json columns parsed (person_json → person). */
+function clean(row: Record<string, unknown>) {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (SKIP_COLUMNS.has(k)) continue;
+    if (k.endsWith('_json')) out[k.slice(0, -5)] = parse(v);
+    else out[k] = v;
+  }
+  return out;
+}
+
+// GET /api/backup → everything Ligature keeps for you, as one JSON file to download.
 export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data }) => {
   const user = requireUser(data.user);
-  const all = async (sql: string) => (await env.DB.prepare(sql).bind(user.id).all<Record<string, unknown>>()).results;
 
-  const [accounts, contacts, fieldDefs, fieldValues, relationships, pins, archives, interactions] = await Promise.all([
-    all(`SELECT id, provider, provider_account_id, label, scopes, groups_json, last_synced_at, created_at FROM accounts WHERE user_id = ?1`),
-    all(`SELECT id, account_id, provider_contact_id, etag, display_name, data_json, merged_into, deleted_at, archived_at, updated_at, created_at
-         FROM contacts WHERE user_id = ?1 ORDER BY sort_key`),
-    all(`SELECT id, label, type, position, key, created_at FROM field_defs WHERE user_id = ?1 ORDER BY position`),
-    all(`SELECT contact_id, field_id, value, updated_at FROM field_values WHERE user_id = ?1`),
-    all(`SELECT id, a_id, b_id, kind, label, combined, created_at, updated_at FROM relationships WHERE user_id = ?1`),
-    all(`SELECT id, label, address, lat, lng, created_at FROM pins WHERE user_id = ?1`),
-    all(`SELECT contact_id, person_json, groups_json, photo, archived_at FROM archives WHERE user_id = ?1`),
-    all(`SELECT id, contact_id, channel, mode, subject, body, occurred_at, batch_id FROM interactions WHERE user_id = ?1`),
-  ]);
+  const tables = (
+    await env.DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name`).all<{
+      name: string;
+    }>()
+  ).results.map((t) => t.name).filter((t) => !SKIP_TABLES.has(t));
+
+  const out: Record<string, unknown[]> = {};
+  for (const table of tables) {
+    const cols = (await env.DB.prepare(`PRAGMA table_info("${table}")`).all<{ name: string }>()).results.map((c) => c.name);
+    if (!cols.includes('user_id')) continue;
+    const rows = (await env.DB.prepare(`SELECT * FROM "${table}" WHERE user_id = ?1`).bind(user.id).all<Record<string, unknown>>()).results;
+    out[table] = rows.map(clean);
+  }
 
   const backup = {
     app: 'Ligature',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     user: { id: user.id, name: user.display_name, prefs: parse(user.prefs) },
-    accounts: accounts.map(({ groups_json, ...a }) => ({ ...a, lists: parse(groups_json) })),
-    contacts: contacts.map(({ data_json, ...c }) => ({ ...c, google: parse(data_json) })),
-    fields: fieldDefs,
-    fieldValues,
-    relationships,
-    pins,
-    archive: archives.map(({ person_json, groups_json, ...a }) => ({ ...a, google: parse(person_json), lists: parse(groups_json) })),
-    messages: interactions,
+    ...out,
   };
 
   const day = new Date().toISOString().slice(0, 10);

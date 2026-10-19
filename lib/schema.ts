@@ -1,6 +1,8 @@
 // The app migrates its own D1 database on first request, so a fresh deploy
 // (Cloudflare Git deploy or self-hosted) needs no manual migration step.
 // Append new migrations; never edit old ones.
+// Backups (functions/api/backup.ts) include every table with a user_id column, so give new
+// tables of your data one; anything secret or disposable goes in that file’s skip lists.
 
 const MIGRATIONS: string[][] = [
   [
