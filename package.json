@@ -1,0 +1,18 @@
+{
+  "name": "ligature",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A personal CRM on top of Google Contacts. Your extra fields live in Ligature and never sync back.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "dev:mock": "node scripts/mock-google.mjs",
+    "typecheck": "tsc --noEmit",
+    "test-contacts": "python3 scripts/make-test-contacts.py > test-contacts.csv"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251014.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.151.0"
+  }
+}

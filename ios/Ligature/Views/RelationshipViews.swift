@@ -1,0 +1,227 @@
+import SwiftUI
+
+/// A contact’s screen. For people shown together, a switcher at the top moves between them.
+struct PersonView: View {
+    let id: String
+    @Environment(Store.self) private var store
+    @State private var current: String
+
+    init(id: String) {
+        self.id = id
+        _current = State(initialValue: id)
+    }
+
+    var body: some View {
+        let members = store.together[id] ?? store.together[current] ?? []
+        ContactDetailView(id: current)
+            .id(current)
+            .toolbar {
+                if members.count > 1 {
+                    ToolbarItem(placement: .principal) {
+                        Picker("Person", selection: $current) {
+                            ForEach(members) { m in
+                                Text(m.givenName.isEmpty ? m.displayName : m.givenName).tag(m.id)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .fixedSize()
+                    }
+                }
+            }
+    }
+}
+
+/// The Relationships section of a contact.
+struct RelationshipsSection: View {
+    let id: String
+    @Binding var editing: RelationshipEditTarget?
+    @Environment(Store.self) private var store
+
+    var body: some View {
+        let rels = store.relationships(of: id)
+        Section {
+            ForEach(rels) { r in
+                let other = r.other(than: id)
+                let person = store.contacts.first { $0.id == other }
+                NavigationLink(value: other) {
+                    HStack(spacing: 10) {
+                        Avatar(url: person?.photoUrl ?? "", initials: person?.initials ?? "?", size: 28)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(r.label(for: id)).font(.subheadline).foregroundStyle(Color(.secondaryLabel))
+                            Text(person?.displayName ?? "No Name")
+                        }
+                        Spacer()
+                        if r.combined {
+                            Text("Together")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color(.tertiarySystemFill)))
+                        }
+                    }
+                }
+                .swipeActions {
+                    Button("Remove", role: .destructive) { Task { await store.removeRelationship(r) } }
+                    Button("Edit") { editing = RelationshipEditTarget(me: id, existing: r) }
+                }
+                .contextMenu {
+                    Button { editing = RelationshipEditTarget(me: id, existing: r) } label: { Label("Edit", systemImage: "pencil") }
+                    Button(role: .destructive) { Task { await store.removeRelationship(r) } } label: { Label("Remove", systemImage: "trash") }
+                }
+            }
+            Button { editing = RelationshipEditTarget(me: id, existing: nil) } label: {
+                Label("Add Relationship", systemImage: "plus")
+            }
+        } header: {
+            Text("Relationships")
+        } footer: {
+            Text("Only in Ligature.")
+        }
+    }
+}
+
+struct RelationshipEditTarget: Identifiable {
+    let id = UUID()
+    let me: String
+    let existing: Relationship?
+}
+
+struct RelationshipEditor: View {
+    let me: String
+    let existing: Relationship?
+    @Environment(Store.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var other: String?
+    @State private var role: RelationRole
+    @State private var label: String
+    @State private var together: Bool
+    @State private var touched: Bool
+    @State private var saving = false
+    @State private var confirmRemove = false
+
+    init(me: String, existing: Relationship?) {
+        self.me = me
+        self.existing = existing
+        _other = State(initialValue: existing?.other(than: me))
+        _role = State(initialValue: existing.map { RelationRole.of($0, me: me) } ?? .spouse)
+        _label = State(initialValue: existing?.label ?? "")
+        _together = State(initialValue: existing?.combined ?? true)
+        _touched = State(initialValue: existing != nil)
+    }
+
+    private func person(_ id: String?) -> ContactRow? { id.flatMap { id in store.contacts.first { $0.id == id } } }
+    private func first(_ c: ContactRow?) -> String {
+        guard let c else { return "them" }
+        return c.givenName.isEmpty ? c.displayName : c.givenName
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Person") {
+                    if let o = person(other), existing != nil {
+                        Text(o.displayName)
+                    } else {
+                        NavigationLink {
+                            PersonPicker(exclude: me) { other = $0 }
+                        } label: {
+                            if let o = person(other) { Text(o.displayName) } else { Text("Choose…").foregroundStyle(Color.accentColor) }
+                        }
+                    }
+                }
+                Section {
+                    Picker(other == nil ? "Who they are to \(first(person(me)))" : "\(first(person(other))) is \(first(person(me)))’s", selection: $role) {
+                        ForEach(RelationRole.allCases) { Text($0.label).tag($0) }
+                    }
+                    if role == .other {
+                        TextField("Relationship, like Godparent", text: $label)
+                    }
+                }
+                Section {
+                    Toggle("Show as One in the List", isOn: Binding(get: { together }, set: { together = $0; touched = true }))
+                } footer: {
+                    if together, other != nil { Text(preview) }
+                }
+                if existing != nil {
+                    Section {
+                        Button("Remove Relationship", role: .destructive) { confirmRemove = true }
+                    }
+                }
+            }
+            .navigationTitle(existing == nil ? "Add Relationship" : "Edit Relationship")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(existing == nil ? "Add" : "Save") { save() }
+                        .disabled(other == nil || saving)
+                }
+            }
+            .onChange(of: role) { _, r in if !touched { together = r.together } }
+            .confirmationDialog("Remove this relationship?", isPresented: $confirmRemove, titleVisibility: .visible) {
+                Button("Remove", role: .destructive) {
+                    guard let existing else { return }
+                    Task {
+                        await store.removeRelationship(existing)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    /// The entry’s name once this joins them.
+    private var preview: String {
+        guard let other else { return "" }
+        let (a, b) = role.otherIsA == true ? (other, me) : (me, other)
+        var rels = store.relationships.filter { r in r.id != existing?.id && !((r.a == me && r.b == other) || (r.a == other && r.b == me)) }
+        rels.append(Relationship(id: "preview", a: a, b: b, kind: role.kind, label: "", combined: true))
+        let members = Together.groups(store.contacts, rels)[me] ?? []
+        return "Shown as “\(Together.name(members))”."
+    }
+
+    private func save() {
+        guard let other else { return }
+        saving = true
+        Task {
+            let ok = await store.saveRelationship(me: me, other: other, role: role, label: label, together: together, replacing: existing)
+            saving = false
+            if ok { dismiss() }
+        }
+    }
+}
+
+/// Choose a contact by searching.
+struct PersonPicker: View {
+    let exclude: String
+    let pick: (String) -> Void
+    @Environment(Store.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    var body: some View {
+        let terms = query.lowercased().split(separator: " ").map(String.init)
+        let people = store.contacts
+            .filter { $0.id != exclude && (terms.isEmpty || terms.allSatisfy($0.search.contains)) }
+            .sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+        List(people) { c in
+            Button {
+                pick(c.id)
+                dismiss()
+            } label: {
+                HStack(spacing: 10) {
+                    Avatar(url: c.photoUrl, initials: c.initials, size: 28)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(c.displayName.isEmpty ? "No Name" : c.displayName).foregroundStyle(Color.primary)
+                        if !c.organization.isEmpty { Text(c.organization).font(.subheadline).foregroundStyle(.secondary) }
+                    }
+                }
+            }
+        }
+        .listStyle(.plain)
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
+        .navigationTitle("Choose Person")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}

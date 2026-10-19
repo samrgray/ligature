@@ -1,0 +1,18 @@
+# Cloudflare Pages config. Pages reads this on every Git deploy.
+# Secrets (GOOGLE_CLIENT_SECRET, optional TOKEN_ENCRYPTION_KEY) are set in the
+# Cloudflare dashboard, never here. See README.md.
+name = "ligature"
+compatibility_date = "2025-09-01"
+pages_build_output_dir = "public"
+
+[vars]
+# Public OAuth client ID (not a secret). Self-hosters: replace with your own.
+GOOGLE_CLIENT_ID = "1077599627833-2ll5bad820jt1rro7vspbmik7i1j01bs.apps.googleusercontent.com"
+# "first" = only the first person to sign in gets an account (default).
+# "open"  = anyone who can pass Google sign-in gets their own account.
+ALLOW_SIGNUPS = "first"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ligature"
+database_id = "4249f71c-de5a-4115-8504-0fa1eba0a35f"

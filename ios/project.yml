@@ -1,0 +1,66 @@
+# XcodeGen spec: the Xcode project is generated from this file (`xcodegen` in this folder),
+# so there’s no hand-maintained .xcodeproj in the repo.
+name: Ligature
+options:
+  bundleIdPrefix: com.samrgray
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+packages:
+  # Vector OpenStreetMap maps.
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    from: 6.0.0
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Ligature:
+    type: application
+    platform: iOS
+    sources:
+      - path: Ligature
+    dependencies:
+      - package: MapLibre
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.samrgray.ligature
+        PRODUCT_NAME: Ligature
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Ligature
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+  LigatureUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: LigatureUITests
+    dependencies:
+      - target: Ligature
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.samrgray.ligature.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Ligature
+schemes:
+  Ligature:
+    build:
+      targets:
+        Ligature: all
+    test:
+      targets:
+        - LigatureUITests
+    run:
+      config: Debug
+    archive:
+      config: Release

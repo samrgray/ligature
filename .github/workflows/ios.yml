@@ -1,0 +1,240 @@
+name: iOS
+
+# Builds the iOS app on GitHub’s Macs. Every push to main that touches ios/ is built once,
+# signed and uploaded to TestFlight. Simulator screenshots (demo data, no sign-in) only run
+# when started by hand, since Mac minutes are limited on the free plan.
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+    inputs:
+      screenshots:
+        description: Simulator screenshots
+        type: boolean
+        default: true
+      testflight:
+        description: Upload to TestFlight
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    if: github.event_name == 'workflow_dispatch' && inputs.screenshots
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+      - name: Generate the Xcode project
+        working-directory: ios
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Pick a simulator
+        id: sim
+        run: |
+          xcodebuild -version
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          ios=[(k,v) for k,v in d.items() if 'iOS' in k]
+          ios.sort(key=lambda kv: [int(x) for x in kv[0].split('iOS-')[1].split('-')])
+          for k,v in reversed(ios):
+              for dev in v:
+                  if dev['name'].startswith('iPhone 16') and 'Plus' not in dev['name'] and 'Max' not in dev['name'] and 'e' != dev['name'][-1]:
+                      print(dev['udid']); sys.exit()
+          for k,v in reversed(ios):
+              for dev in v:
+                  if dev['name'].startswith('iPhone'):
+                      print(dev['udid']); sys.exit()
+          ")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices | grep "$UDID"
+      - name: Build for the simulator
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project Ligature.xcodeproj -scheme Ligature -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E "error:|warning: .*(deprecated|will never)|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Report errors
+        if: failure()
+        working-directory: ios
+        run: |
+          # One annotation per compile error, so they show up on the run.
+          grep -E "^/.*:[0-9]+:[0-9]+: error: " build.log | sort -u | head -45 | while IFS= read -r line; do
+            file=$(echo "$line" | sed -E 's#^.*/ios/([^:]+):([0-9]+):([0-9]+): error: (.*)$#ios/\1#')
+            ln=$(echo "$line" | sed -E 's#^.*:([0-9]+):[0-9]+: error: .*$#\1#')
+            msg=$(echo "$line" | sed -E 's#^.*: error: (.*)$#\1#')
+            echo "::error file=$file,line=$ln::$msg"
+          done
+          grep -E "error:" build.log | grep -vE "^/.*:[0-9]+:[0-9]+: error: " | sort -u | head -5 | while IFS= read -r line; do echo "::error::$line"; done
+      - name: UI tests
+        working-directory: ios
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          export SHOTS_DIR="$PWD/shots"
+          mkdir -p shots
+          SIMCTL_CHILD_SHOTS_DIR="$SHOTS_DIR" xcodebuild -project Ligature.xcodeproj -scheme Ligature -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath build \
+            CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO test > uitest.log 2>&1 || true
+          grep -E "Test Case .*(passed|failed)|error: -\[|XCTAssert" uitest.log | head -30 | while IFS= read -r l; do echo "::warning::$l"; done
+          cp uitest.log shots/ 2>/dev/null || true
+          xcrun simctl spawn booted log show --last 15m --style compact --predicate 'process == "Ligature"' 2>/dev/null | grep -iE -A12 "terminat|fatal error|exception|crash" | head -120 > shots/testlog.txt || true
+          find ~/Library/Logs/DiagnosticReports -iname '*igature*' -mmin -30 -exec cp {} shots/ \; 2>/dev/null || true
+      - name: Screenshots
+        working-directory: ios
+        run: |
+          UDID=${{ steps.sim.outputs.udid }}
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
+          APP=build/Build/Products/Debug-iphonesimulator/Ligature.app
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          shoot() {
+            name=$1; shift
+            xcrun simctl terminate "$UDID" com.samrgray.ligature 2>/dev/null || true
+            xcrun simctl ui "$UDID" appearance "${APPEARANCE:-light}"
+            xcrun simctl launch "$UDID" com.samrgray.ligature -demo "$@"
+            sleep "${WAIT:-4}"
+            xcrun simctl io "$UDID" screenshot "shots/$name.png"
+          }
+          shoot signin -screen signin
+          shoot list
+          shoot list-nopins -nopins
+          shoot together -screen together
+          shoot relate -screen relate
+          WAIT=9 shoot map -screen map
+          WAIT=9 shoot mapspot -screen mapspot
+          shoot tab -screen tab
+          shoot tabdrag -screen tabdrag
+          shoot search -screen search
+          shoot detail -screen detail
+          shoot fields -screen fields
+          shoot edit -screen edit
+          shoot lists -screen lists
+          shoot manage -screen manage
+          shoot settings -screen settings
+          shoot select -screen select
+          shoot compose -screen compose
+          shoot review -screen review
+          APPEARANCE=dark shoot list-dark
+          APPEARANCE=dark shoot detail-dark -screen detail
+          WAIT=9 APPEARANCE=dark shoot map-dark -screen map
+          xcrun simctl spawn "$UDID" log show --last 40s --style compact --predicate 'process == "Ligature"' 2>/dev/null | tail -150 > shots/darklog.txt || true
+          find ~/Library/Logs/DiagnosticReports -iname '*igature*' -mmin -30 -exec cp {} shots/ \; 2>/dev/null || true
+      - name: Publish screenshots and log to the ci-output branch
+        if: always()
+        run: |
+          set -e
+          out="$RUNNER_TEMP/out"
+          mkdir -p "$out"
+          cp -R ios/shots "$out/" 2>/dev/null || true
+          cp ios/build.log "$out/" 2>/dev/null || true
+          echo "${{ github.sha }}" > "$out/commit.txt"
+          cd "$out"
+          git init -q -b ci-output
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "CI output for ${{ github.sha }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-output
+
+  testflight:
+    runs-on: macos-26
+    timeout-minutes: 40
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.testflight)
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - name: Check the App Store Connect secrets
+        id: ready
+        run: |
+          if [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY_P8" ] && [ -n "$DEVELOPMENT_TEAM" ]; then
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::TestFlight upload skipped: add ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 and APPLE_TEAM_ID as repository secrets."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.ok
+      - name: Use the newest Xcode
+        if: steps.ready.outputs.ok
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+      - name: Generate the Xcode project
+        if: steps.ready.outputs.ok
+        working-directory: ios
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+      - name: Archive and upload
+        if: steps.ready.outputs.ok
+        working-directory: ios
+        run: |
+          set -o pipefail
+          KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$KEY"
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          # The archive is built unsigned; the export step signs it with Apple’s cloud-managed
+          # distribution certificate, so runs don’t each create a certificate on the account.
+          # Each run gets a higher build number than the last.
+          BUILD=$(( ${{ github.run_number }} + 100 ))
+          xcodebuild -project Ligature.xcodeproj -scheme Ligature -configuration Release \
+            -destination "generic/platform=iOS" -archivePath "$RUNNER_TEMP/Ligature.xcarchive" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" CURRENT_PROJECT_VERSION="$BUILD" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            archive > archive.log 2>&1 \
+            || { grep -E "error:|Error|failed" archive.log | sort -u | head -20 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$DEVELOPMENT_TEAM</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Ligature.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" $AUTH > export.log 2>&1 \
+            || { grep -E "error:|Error|failed" export.log | sort -u | head -20 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          echo "Uploaded build $BUILD to TestFlight." >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish the logs to the ci-testflight branch
+        if: always() && steps.ready.outputs.ok
+        run: |
+          out="$RUNNER_TEMP/tf"
+          mkdir -p "$out"
+          cp ios/archive.log ios/export.log "$out/" 2>/dev/null || true
+          echo "${{ github.sha }}" > "$out/commit.txt"
+          cd "$out"
+          git init -q -b ci-testflight
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "TestFlight logs for ${{ github.sha }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-testflight

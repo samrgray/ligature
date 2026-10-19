@@ -1,0 +1,51 @@
+First Name,Last Name,Organization Name,Organization Title,Birthday,Notes,Labels,E-mail 1 - Label,E-mail 1 - Value,E-mail 2 - Label,E-mail 2 - Value,Phone 1 - Label,Phone 1 - Value,Phone 2 - Label,Phone 2 - Value,Address 1 - Label,Address 1 - Street,Address 1 - City,Address 1 - Region,Address 1 - Postal Code,Address 1 - Country,Website 1 - Label,Website 1 - Value
+Ava,Chen,Northwind Studio,Design Lead,1974-07-21,Met at a design meetup.,* myContacts ::: Work,Work,ava.chen@example.org,Work,ava@northwindstu.example.com,Mobile,(503) 555-0168,Work,(503) 555-0146,Home,9558 Linden Fold Ln,Portland,OR,97209,US,Work,https://northwindstudio.example.com
+Aaron,Diaz,Diaz & Co.,Owner,1970-07-14,Prefers texts over calls.,* myContacts,Work,aaron.diaz@example.com,,,Mobile,(503) 555-0111,,,,,,,,,,
+Ben,Lowell,,,1992-01-27,Prefers texts over calls.,* myContacts ::: Family,Home,ben.lowell@example.net,,,Mobile,(503) 555-0180,,,Home,9561 Linden Fold Ln,Portland,OR,97211,US,,
+Beatriz,Okafor,Harbor Health,Physician,,Introduced by Maya.,* myContacts,Work,beatriz.okafor@example.com,Work,beatriz@harborhealth.example.com,Mobile,(503) 555-0171,,,Home,2191 Halberd St,Portland,OR,97211,US,,
+Chris,Park,Northwind Studio,Engineer,1999-02-19,Owes me a book.,* myContacts ::: Work,Work,chris.park@example.com,,,Mobile,(503) 555-0113,Work,(503) 555-0147,,,,,,,,
+Carmen,Ruiz,,,2000-12-03,Met at a design meetup.,* myContacts ::: Neighbors,Home,carmen.ruiz@example.com,,,Mobile,(503) 555-0163,,,Home,8721 Coldbrook Row,Portland,OR,97214,US,,
+Cole,Whitaker,Fieldwork,Producer,1994-06-10,Introduced by Maya.,* myContacts ::: Work,Work,cole.whitaker@example.org,Work,cole@fieldwork.example.com,Mobile,(503) 555-0189,Work,(503) 555-0110,Home,9421 Halberd St,Portland,OR,97211,US,,
+Devon,Hale,Hale Builders,Contractor,,,* myContacts,Work,devon.hale@example.org,,,Mobile,(971) 555-0177,,,,,,,,,,
+Dana,Kim,,,1972-09-14,Kids go to Lincoln.,* myContacts ::: Family,Home,dana.kim@example.com,,,Mobile,(971) 555-0119,,,Home,8021 Coldbrook Row,Portland,OR,97202,US,,
+Eli,Brandt,Brandt Legal,Attorney,1969-09-19,Great for restaurant tips.,* myContacts,Work,eli.brandt@example.net,Work,eli@brandtlegal.example.com,Mobile,(971) 555-0188,,,Home,5747 Marrow Ln,Portland,OR,97211,US,,
+Elena,Moreau,Atelier M,Founder,1994-02-27,Prefers texts over calls.,* myContacts,Work,elena.moreau@example.net,,,Mobile,(971) 555-0160,Work,(503) 555-0107,,,,,,,Work,https://atelierm.example.com
+Farah,Siddiqui,Lumen Labs,Product Manager,,Owes me a book.,* myContacts ::: Work,Work,farah.siddiqui@example.net,,,Mobile,(971) 555-0136,,,Home,6330 Pellmore Ave,Portland,OR,97202,US,,
+Felix,Navarro,,,1987-03-20,Prefers texts over calls.,* myContacts ::: Friends,Home,felix.navarro@example.org,,,Mobile,(971) 555-0107,,,Home,3585 Halberd St,Portland,OR,97209,US,,
+Grace,Odum,Maple Books,Owner,1980-07-13,,* myContacts ::: Neighbors,Work,grace.odum@example.net,,,Mobile,(503) 555-0121,,,,,,,,,,
+Gabriel,Stone,Stone & Pine,Architect,1990-09-09,Kids go to Lincoln.,* myContacts,Work,gabriel.stone@example.org,,,Mobile,(971) 555-0170,Work,(971) 555-0190,Home,6814 Pellmore Ave,Portland,OR,97211,US,,
+Hannah,Weiss,Lumen Labs,Researcher,,Kids go to Lincoln.,* myContacts ::: Work,Work,hannah.weiss@example.com,Work,hannah@lumenlabs.example.com,Mobile,(503) 555-0122,,,Home,2488 Orrin Way,Portland,OR,97209,US,Work,https://lumenlabs.example.com
+Hiro,Tanaka,,,1996-10-06,Owes me a book.,* myContacts ::: Friends,Home,hiro.tanaka@example.com,,,Mobile,(971) 555-0100,,,,,,,,,,
+Imani,Brooks,Lincoln Elementary,Teacher,1991-09-12,Great for restaurant tips.,* myContacts ::: Neighbors,Work,imani.brooks@example.com,,,Mobile,(503) 555-0188,,,Home,8455 Marrow Ln,Portland,OR,97202,US,,
+Isaac,Feld,Feld Physical Therapy,Therapist,2000-07-13,,* myContacts,Work,isaac.feld@example.org,Work,isaac@feldphysical.example.com,Mobile,(971) 555-0113,Work,(971) 555-0181,Home,6570 Linden Fold Ln,Portland,OR,97209,US,,
+Jada,Morris,Northwind Studio,Recruiter,,Introduced by Maya.,* myContacts ::: Work,Work,jada.morris@example.com,,,Mobile,(971) 555-0120,,,,,,,,,,
+Jonah,Albrecht,,,1986-10-02,Prefers texts over calls.,* myContacts ::: Family,Home,jonah.albrecht@example.com,,,Mobile,(503) 555-0172,,,Home,2488 Ashgrove Ter,Portland,OR,97202,US,,
+Keiko,Yamada,Paper & Thread,Illustrator,1966-02-28,Introduced by Maya.,* myContacts ::: Friends,Work,keiko.yamada@example.org,Work,keiko@paperthread.example.com,Mobile,(971) 555-0144,,,Home,9877 Pellmore Ave,Portland,OR,97211,US,,
+Kofi,Mensah,Mensah Advisory,Accountant,1972-08-15,,* myContacts,Work,kofi.mensah@example.com,,,Mobile,(971) 555-0139,Work,(503) 555-0118,,,,,,,,
+Lena,Kowalski,,,,Great for restaurant tips.,* myContacts ::: Family,Home,lena.kowalski@example.com,,,Mobile,(971) 555-0161,,,Home,2655 Ashgrove Ter,Portland,OR,97202,US,,
+Liam,O’Connor,Greenline Transit,Planner,1998-06-05,,* myContacts,Work,liam.oconnor@example.com,Work,liam@greenlinetra.example.com,Mobile,(503) 555-0197,Work,(971) 555-0182,Home,1501 Halberd St,Portland,OR,97214,US,,
+Maya,Patel,Lumen Labs,Head of Design,1987-04-18,,* myContacts ::: Work,Work,maya.patel@example.com,,,Mobile,(503) 555-0178,,,,,,,,,Work,https://lumenlabs.example.com
+Marco,Bellini,Trattoria Bellini,Chef,1980-07-24,Introduced by Maya.,* myContacts ::: Friends,Work,marco.bellini@example.com,,,Mobile,(503) 555-0166,Work,(971) 555-0145,Home,484 Linden Fold Ln,Portland,OR,97214,US,,
+Nadia,Haddad,,,,Owes me a book.,* myContacts ::: Friends,Home,nadia.haddad@example.org,,,Mobile,(971) 555-0157,,,Home,5736 Pellmore Ave,Portland,OR,97202,US,,
+Noah,Fischer,Fischer Dental,Dentist,1971-04-16,Introduced by Maya.,* myContacts,Work,noah.fischer@example.com,,,Mobile,(971) 555-0126,Work,(971) 555-0179,,,,,,,,
+Olivia,Grant,Grant Realty,Agent,1965-08-21,Great for restaurant tips.,* myContacts,Work,olivia.grant@example.net,,,Mobile,(503) 555-0184,,,Home,1974 Coldbrook Row,Portland,OR,97209,US,,
+Omar,Rahman,Northwind Studio,CTO,1976-07-26,Great for restaurant tips.,* myContacts ::: Work,Work,omar.rahman@example.org,Work,omar@northwindstu.example.com,Mobile,(503) 555-0192,Work,(971) 555-0159,Home,6586 Quarry Bend Rd,Portland,OR,97209,US,Work,https://northwindstudio.example.com
+Priya,Raman,,,,Kids go to Lincoln.,* myContacts ::: Friends,Home,priya.raman@example.com,,,Mobile,(503) 555-0119,,,,,,,,,,
+Paul,Dubois,Atelier M,Photographer,1994-11-05,,* myContacts,Work,paul.dubois@example.net,,,Mobile,(503) 555-0102,Work,(503) 555-0167,Home,2291 Coldbrook Row,Portland,OR,97209,US,,
+Quinn,Harper,Harper Coaching,Coach,1966-05-07,Owes me a book.,* myContacts,Work,quinn.harper@example.com,Work,quinn@harpercoachi.example.com,Mobile,(971) 555-0133,,,Home,8928 Coldbrook Row,Portland,OR,97209,US,,
+Rosa,Alvarez,,,1987-08-22,,* myContacts ::: Neighbors,Home,rosa.alvarez@example.com,,,Mobile,(971) 555-0164,,,,,,,,,,
+Ravi,Shah,Lumen Labs,Engineer,,,* myContacts ::: Work,Work,ravi.shah@example.com,,,Mobile,(503) 555-0156,,,Home,3010 Marrow Ln,Portland,OR,97202,US,Work,https://lumenlabs.example.com
+Sofia,Lindqvist,Nordic Supply,Buyer,1976-03-16,Prefers texts over calls.,* myContacts,Work,sofia.lindqvist@example.com,Work,sofia@nordicsupply.example.com,Mobile,(503) 555-0141,Work,(971) 555-0199,Home,1748 Ashgrove Ter,Portland,OR,97202,US,,
+Sam,Okoye,,,1977-05-02,Prefers texts over calls.,* myContacts ::: Friends,Home,sam.okoye@example.com,,,Mobile,(971) 555-0171,,,,,,,,,,
+Tara,Quinlan,Riverbend Vet,Veterinarian,1969-08-11,,* myContacts ::: Neighbors,Work,tara.quinlan@example.com,,,Mobile,(503) 555-0157,Work,(503) 555-0153,Home,2002 Coldbrook Row,Portland,OR,97211,US,,
+Theo,Marsh,Marsh Woodworks,Carpenter,,Prefers texts over calls.,* myContacts,Work,theo.marsh@example.org,Work,theo@marshwoodwor.example.com,Mobile,(503) 555-0154,,,Home,1208 Orrin Way,Portland,OR,97214,US,,
+Uma,Krishnan,Harbor Health,Nurse Practitioner,1974-12-21,Great for restaurant tips.,* myContacts,Work,uma.krishnan@example.com,,,Mobile,(503) 555-0132,Work,(503) 555-0159,,,,,,,Work,https://harborhealth.example.com
+Victor,Hugo-Reyes,,,1971-07-16,Kids go to Lincoln.,* myContacts ::: Family,Home,victor.hugoreyes@example.com,,,Mobile,(503) 555-0120,,,Home,7080 Ashgrove Ter,Portland,OR,97211,US,,
+Wren,Ellis,Fieldwork,Editor,1991-04-12,Great for restaurant tips.,* myContacts ::: Work,Work,wren.ellis@example.org,Work,wren@fieldwork.example.com,Mobile,(971) 555-0102,Work,(971) 555-0156,Home,306 Coldbrook Row,Portland,OR,97214,US,,
+Will,Ashby,Ashby Insurance,Broker,,Owes me a book.,* myContacts,Work,will.ashby@example.net,,,Mobile,(503) 555-0114,,,,,,,,,,
+Xena,Papadakis,,,1971-02-09,Owes me a book.,* myContacts ::: Friends,Home,xena.papadakis@example.com,,,Mobile,(503) 555-0199,,,Home,2984 Halberd St,Portland,OR,97209,US,,
+Yusuf,Demir,Demir Imports,Owner,1981-07-05,,* myContacts,Work,yusuf.demir@example.org,Work,yusuf@demirimports.example.com,Mobile,(971) 555-0189,,,Home,5368 Quarry Bend Rd,Portland,OR,97214,US,Work,https://demirimports.example.com
+Yara,Nasser,Lumen Labs,Data Scientist,1976-07-03,Owes me a book.,* myContacts ::: Work,Work,yara.nasser@example.com,,,Mobile,(503) 555-0181,Work,(503) 555-0133,,,,,,,,
+Zoe,Abernathy,,,,Introduced by Maya.,* myContacts ::: Family,Home,zoe.abernathy@example.com,,,Mobile,(503) 555-0158,,,Home,199 Pellmore Ave,Portland,OR,97211,US,,
+Zane,Holloway,Holloway Cycles,Mechanic,1973-01-17,Introduced by Maya.,* myContacts ::: Neighbors,Work,zane.holloway@example.org,Work,zane@hollowaycycl.example.com,Mobile,(971) 555-0106,Work,(503) 555-0125,Home,5121 Halberd St,Portland,OR,97209,US,,
+,,Corner Hardware,,,,* myContacts,Work,hello@cornerhardwa.example.com,,,Work,(503) 555-0134,,,,,,,,,,

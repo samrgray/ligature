@@ -1,0 +1,14 @@
+# Copy to .dev.vars for `npm run dev`. Never commit .dev.vars.
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+# Optional: 32 random bytes, base64 (openssl rand -base64 32). Encrypts Google tokens at rest.
+# If unset, a key is derived from GOOGLE_CLIENT_SECRET.
+# TOKEN_ENCRYPTION_KEY=
+
+# To test without Google, run `npm run dev:mock` in another terminal and uncomment:
+# GOOGLE_CLIENT_ID=mock-client
+# GOOGLE_CLIENT_SECRET=mock-secret
+# GOOGLE_AUTH_URL=http://localhost:8790/auth
+# GOOGLE_TOKEN_URL=http://localhost:8790/token
+# GOOGLE_API_URL=http://localhost:8790
+# GOOGLE_GMAIL_URL=http://localhost:8790

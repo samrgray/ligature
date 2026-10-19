@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.dev.vars
+.DS_Store
+ios/Ligature.xcodeproj/
+ios/build/
+ios/shots/
+ios/build.log

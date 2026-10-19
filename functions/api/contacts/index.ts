@@ -1,0 +1,119 @@
+import type { AccountRow, Address, CardEdit, ContactRow, Data, Env } from '../../../lib/types';
+import { HttpError, json, now, readJson } from '../../../lib/http';
+import { requireUser } from '../../../lib/session';
+import { provider } from '../../../lib/providers';
+import { relationshipsFor, sortKeyFor } from '../../../lib/contacts';
+import { cleanEdit, contactPayload } from '../../../lib/payload';
+
+/**
+ * The first address as a street, a “City, ST 12345” line and a country, and whether it’s the one
+ * the Neighborhood field belongs to (the home address, or the only one).
+ */
+function addressParts(list: Address[]) {
+  const a = list[0];
+  if (!a || !(a.city || a.region || a.postalCode || a.country)) return null;
+  const home = list.findIndex((x) => x.label.trim().toLowerCase() === 'home');
+  return {
+    street: a.street.replace(/\s*\n\s*/g, ', ').trim(),
+    city: a.city.trim(),
+    rest: [a.region.trim(), a.postalCode.trim()].filter(Boolean).join(' '),
+    country: a.country.trim(),
+    hood: home <= 0,
+  };
+}
+
+// GET /api/contacts  → one row per contact for the table: the columns it can show, plus
+// your own fields and when you last messaged them.
+export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data }) => {
+  const user = requireUser(data.user);
+  const rows = (
+    await env.DB
+      .prepare(
+        `SELECT c.id, c.account_id, c.data_json, a.provider,
+           (SELECT json_group_object(fv.field_id, fv.value) FROM field_values fv WHERE fv.contact_id = c.id) AS fields_json
+         FROM contacts c JOIN accounts a ON a.id = c.account_id
+         WHERE c.user_id = ?1 AND c.deleted_at IS NULL AND c.merged_into IS NULL AND c.archived_at IS NULL
+         ORDER BY c.sort_key`,
+      )
+      .bind(user.id)
+      .all<{ id: string; account_id: string; data_json: string; provider: string; fields_json: string | null }>()
+  ).results;
+
+  return json({
+    relationships: await relationshipsFor(env.DB, user.id),
+    contacts: rows.map((r) => {
+      const card = provider(r.provider).toCard(JSON.parse(r.data_json));
+      const fields = JSON.parse(r.fields_json || '{}') as Record<string, string>;
+      const mobile = card.phones.find((p) => /mobile|cell|iphone/i.test(p.label)) ?? card.phones[0];
+      return {
+        id: r.id,
+        accountId: r.account_id,
+        givenName: card.givenName,
+        familyName: card.familyName,
+        displayName: card.displayName,
+        organization: card.organization,
+        title: card.title,
+        email: card.emails[0]?.value ?? '',
+        phone: mobile?.value ?? '',
+        address: card.addresses[0]?.value.replace(/\s*\n\s*/g, ', ') ?? '',
+        // The parts, so the table can put the neighborhood in front of the city.
+        addressParts: addressParts(card.addresses),
+        birthday: card.birthday,
+        birthdayKey: card.birthdayKey,
+        notes: card.notes.slice(0, 300),
+        photoUrl: card.photoUrl,
+        search: [
+          card.displayName, card.organization, card.title,
+          ...card.phones.map((p) => p.value), ...card.emails.map((e) => e.value), ...Object.values(fields),
+        ]
+          .join(' ')
+          .toLowerCase(),
+        groups: card.groups,
+        fields,
+      };
+    }),
+  });
+};
+
+// POST /api/contacts  { accountId, edit }  → create in the provider.
+export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request, env, data }) => {
+  const user = requireUser(data.user);
+  const body = await readJson<{ accountId?: string; edit?: CardEdit }>(request);
+  const account = await env.DB
+    .prepare('SELECT * FROM accounts WHERE id = ?1 AND user_id = ?2')
+    .bind(body.accountId ?? '', user.id)
+    .first<AccountRow>();
+  if (!account) throw new HttpError(400, 'Choose an account for the new contact.');
+  const edit = cleanEdit(body.edit);
+  if (!edit.givenName && !edit.familyName && !edit.organization) throw new HttpError(400, 'Add a name or a company.');
+
+  const p = provider(account.provider);
+  const id = crypto.randomUUID();
+  const pc = await p.create({ env, db: env.DB, account }, edit, id);
+  const card = p.toCard(pc.raw);
+  const t = now();
+  const row: ContactRow = {
+    id,
+    user_id: user.id,
+    account_id: account.id,
+    provider_contact_id: pc.providerContactId,
+    etag: pc.etag,
+    display_name: card.displayName,
+    sort_key: sortKeyFor(card),
+    data_json: JSON.stringify(pc.raw),
+    link_stamped: pc.linkIds.includes(id) ? 1 : 0,
+    merged_into: null,
+    deleted_at: null,
+    updated_at: t,
+    created_at: t,
+  };
+  await env.DB
+    .prepare(
+      `INSERT INTO contacts (id, user_id, account_id, provider_contact_id, etag, display_name, sort_key, data_json,
+         link_stamped, merged_into, deleted_at, updated_at, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL, NULL, ?10, ?10)`,
+    )
+    .bind(row.id, row.user_id, row.account_id, row.provider_contact_id, row.etag, row.display_name, row.sort_key, row.data_json, row.link_stamped, t)
+    .run();
+  return json(await contactPayload(env.DB, user, row, account), 201);
+};

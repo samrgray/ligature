@@ -1,0 +1,5 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; img-src 'self' https://*.googleusercontent.com data: blob:; style-src 'self'; script-src 'self'; worker-src 'self'; connect-src 'self' https://tiles.openfreemap.org; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
