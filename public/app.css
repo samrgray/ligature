@@ -761,3 +761,10 @@ details.past > summary .count { font-weight: 400; color: var(--secondary); font-
 .past-list { margin-top: 14px; }
 .past-list h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
 .past-list h3 span { font-weight: 400; color: var(--secondary); margin-left: 6px; }
+
+/* Tall rows (bigger photos): text wraps onto as many lines as fit, then ends in an ellipsis. */
+.wrap-cells .grid .clamp, .wrap-cells .grid .cell-name {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 1);
+  white-space: normal; overflow: hidden; overflow-wrap: anywhere; line-height: 18px;
+}
+.wrap-cells .grid .cell-open { white-space: normal; }

@@ -643,8 +643,17 @@ S.photoSize = (() => {
   }
 })();
 
+const CELL_LINE = 18; // px, the line height of wrapped table text
+
 function applyPhotoSize() {
-  $('.app')?.style.setProperty('--av', `${S.photoSize}px`);
+  const app = $('.app');
+  if (!app) return;
+  app.style.setProperty('--av', `${S.photoSize}px`);
+  // Rows tall enough for more than one line wrap their text onto as many lines as fit.
+  const row = Math.max(32, S.photoSize + 8);
+  const lines = Math.max(1, Math.floor((row - 6) / CELL_LINE));
+  app.style.setProperty('--lines', String(lines));
+  app.classList.toggle('wrap-cells', lines > 1);
 }
 
 function setPhotoSize(v, done) {
@@ -1031,6 +1040,7 @@ function gridRow(c, j, members, i, cols) {
         ? `<a href="${h(href)}"${/^https?:/i.test(href) ? ' target="_blank" rel="noopener noreferrer"' : ''}>${h(v)}</a>`
         : h(v);
       if (v && (col.id === 'email' || col.id === 'phone')) inner = `<span class="copyable">${inner}${copyBtn(v, col.id === 'email' ? 'email' : 'number')}</span>`;
+      else if (v) inner = `<span class="clamp">${inner}</span>`;
       if (col.id === 'lists') return `<td class="editable lists-cell" data-lists="${h(c.id)}"${title}>${inner}</td>`;
       if (col.field) return `<td class="editable${col.nums ? ' nums' : ''}" data-edit="${h(col.field.id)}"${title}>${inner}</td>`;
       return `<td class="${col.nums ? 'nums' : ''}"${title}>${inner}</td>`;
