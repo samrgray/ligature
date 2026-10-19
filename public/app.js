@@ -2061,6 +2061,7 @@ async function flushFieldSaves() {
     const row = S.contacts.find((c) => c.id === id);
     if (row) {
       row.fields = d.fields;
+      if (d.search) row.search = d.search;
       renderGrid();
     }
   } catch (e) {
@@ -3384,6 +3385,7 @@ async function saveCellValue(ce, row) {
   try {
     const d = await api(`/contacts/${encodeURIComponent(ce.id)}/fields`, { method: 'PUT', body: { values: { [ce.fieldId]: ce.value } } });
     row.fields = d.fields;
+    if (d.search) row.search = d.search;
     if (d.etag) row.etag = d.etag;
     if (S.detail?.id === ce.id) {
       S.detail = { ...S.detail, fields: d.fields, linked: d.linked, etag: d.etag, card: d.card };

@@ -3,6 +3,7 @@ import { HttpError, json, now, readJson } from '../../lib/http';
 import { requireUser } from '../../lib/session';
 import { provider } from '../../lib/providers';
 import { cached, sortKeyFor } from '../../lib/contacts';
+import { checkboxFields, searchText } from '../../lib/payload';
 
 const MAX = 100;
 
@@ -21,6 +22,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
       .bind(user.id)
       .all<{ id: string; account_id: string; provider: string; person_json: string; groups_json: string; photo: string | null; archived_at: number; fields_json: string | null }>()
   ).results;
+  const checkboxes = await checkboxFields(env.DB, user.id);
   return json({
     contacts: rows.map((r) => {
       const card = provider(r.provider).toCard(JSON.parse(r.person_json));
@@ -41,9 +43,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
         birthdayKey: card.birthdayKey,
         notes: card.notes.slice(0, 300),
         photoUrl: r.photo ? `data:image/jpeg;base64,${r.photo}` : '',
-        search: [card.displayName, card.organization, card.title, ...card.phones.map((p) => p.value), ...card.emails.map((e) => e.value), ...Object.values(fields)]
-          .join(' ')
-          .toLowerCase(),
+        search: searchText(card, fields, checkboxes),
         groups: JSON.parse(r.groups_json) as string[],
         fields,
         archivedAt: r.archived_at,

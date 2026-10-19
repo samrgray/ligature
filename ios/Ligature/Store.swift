@@ -705,6 +705,7 @@ final class Store {
             r.photoUrl = d.card.photoUrl
             r.groups = d.card.groups
             r.fields = d.fields
+            if let search = d.search { r.search = search }
             contacts[i] = r
         }
         saveCache()

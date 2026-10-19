@@ -3,7 +3,7 @@ import { HttpError, json, now, readJson } from '../../../lib/http';
 import { requireUser } from '../../../lib/session';
 import { provider } from '../../../lib/providers';
 import { relationshipsFor, sortKeyFor } from '../../../lib/contacts';
-import { cleanEdit, contactPayload } from '../../../lib/payload';
+import { checkboxFields, cleanEdit, contactPayload, searchText } from '../../../lib/payload';
 
 /**
  * The first address as a street, a “City, ST 12345” line and a country, and whether it’s the one
@@ -38,6 +38,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
       .bind(user.id)
       .all<{ id: string; account_id: string; data_json: string; provider: string; fields_json: string | null }>()
   ).results;
+  const checkboxes = await checkboxFields(env.DB, user.id);
 
   return json({
     relationships: await relationshipsFor(env.DB, user.id),
@@ -62,12 +63,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
         birthdayKey: card.birthdayKey,
         notes: card.notes.slice(0, 300),
         photoUrl: card.photoUrl,
-        search: [
-          card.displayName, card.organization, card.title,
-          ...card.phones.map((p) => p.value), ...card.emails.map((e) => e.value), ...Object.values(fields),
-        ]
-          .join(' ')
-          .toLowerCase(),
+        search: searchText(card, fields, checkboxes),
         groups: card.groups,
         fields,
       };

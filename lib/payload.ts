@@ -1,6 +1,34 @@
-import type { AccountRow, CardEdit, ContactRow, Labeled, UserRow } from './types';
+import type { AccountRow, Card, CardEdit, ContactRow, Labeled, UserRow } from './types';
 import { provider } from './providers';
 import { HttpError } from './http';
+
+/** Your fields that are checkboxes: ticked ones are searched by their label, not their “1”. */
+export async function checkboxFields(db: D1Database, userId: string): Promise<Map<string, string>> {
+  const rows = (
+    await db.prepare(`SELECT id, label FROM field_defs WHERE user_id = ?1 AND type = 'checkbox'`).bind(userId).all<{ id: string; label: string }>()
+  ).results;
+  return new Map(rows.map((r) => [r.id, r.label]));
+}
+
+/**
+ * Everything about a contact that search looks through: every Google field and every one of
+ * yours. Phone numbers are also there as bare digits, so “5550188” finds “(503) 555-0188”.
+ */
+export function searchText(card: Card, fields: Record<string, string>, checkboxes: Map<string, string>): string {
+  const labeled = (list: Labeled[]) => list.flatMap((l) => [l.value, l.label]);
+  return [
+    card.givenName, card.familyName, card.displayName, card.organization, card.title,
+    ...labeled(card.phones), ...card.phones.map((p) => p.value.replace(/\D/g, '')),
+    ...labeled(card.emails), ...labeled(card.urls), ...labeled(card.relations), ...labeled(card.events),
+    ...card.addresses.flatMap((a) => [a.value, a.label]),
+    card.birthday, card.notes,
+    ...Object.entries(fields).map(([id, v]) => (checkboxes.has(id) ? (v === '1' ? checkboxes.get(id) : '') : v)),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
 
 export async function contactPayload(db: D1Database, user: UserRow, row: ContactRow, account: AccountRow) {
   const p = provider(account.provider);
@@ -21,12 +49,14 @@ export async function contactPayload(db: D1Database, user: UserRow, row: Contact
     card.groups = JSON.parse(a?.groups_json ?? '[]');
     archived = { at: a?.archived_at ?? row.archived_at, groups: card.groups };
   }
+  const fields: Record<string, string> = Object.fromEntries(values.map((v) => [v.field_id, v.value]));
   return {
     id: row.id,
     etag: row.etag,
     archived,
     card,
-    fields: Object.fromEntries(values.map((v) => [v.field_id, v.value])),
+    fields,
+    search: searchText(card, fields, await checkboxFields(db, user.id)),
     linked: Boolean(row.link_stamped),
     account: { id: account.id, provider: account.provider, providerName: p.name, label: account.label },
     syncedAt: row.updated_at,

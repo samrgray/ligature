@@ -231,6 +231,8 @@ struct ContactDetail: Codable, Hashable {
     var archived: Archived?
     var card: Card
     var fields: [String: String]
+    /// Everything search looks through, so an edit is findable straight away.
+    var search: String? = nil
     let account: AccountRef
 }
 
