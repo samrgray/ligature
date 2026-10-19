@@ -55,7 +55,7 @@ struct FieldDef: Codable, Identifiable, Hashable {
     let id: String
     let label: String
     let type: String // text, longtext, date, url, checkbox
-    /// Built-in fields: "neighborhood", "signal".
+    /// Built-in fields: "neighborhood", "signal", "signal_username".
     var key: String?
 }
 

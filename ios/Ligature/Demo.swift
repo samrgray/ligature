@@ -19,6 +19,7 @@ extension Store {
             FieldDef(id: "hood", label: "Neighborhood", type: "text", key: "neighborhood"),
             FieldDef(id: "notes", label: "Private notes", type: "longtext"),
             FieldDef(id: "signal", label: "On Signal", type: "checkbox", key: "signal"),
+            FieldDef(id: "signalUser", label: "Signal username", type: "text", key: "signal_username"),
         ]
         let people: [(String, String, String, String, [String])] = [
             ("Zoe", "Abernathy", "", "", ["contactGroups/family"]),

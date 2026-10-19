@@ -150,15 +150,20 @@ struct ContactDetailView: View {
                     ActionButton(title: "call", icon: "phone.fill", options: phones) { Links.tel($0) }
                     ActionButton(title: "mail", icon: "envelope.fill", options: emails) { Links.mail($0) }
                     if onSignal {
-                        if phones.isEmpty {
+                        let user = signalUsername
+                        if user.lowercased().hasPrefix("https://signal.me/#"), let u = URL(string: user) {
+                            Button { openURL(u) } label: { ActionFace(title: "signal", icon: "bubble.left.and.bubble.right.fill", enabled: true) }
+                                .buttonStyle(.plain)
+                        } else if user.isEmpty && !phones.isEmpty {
+                            ActionButton(title: "signal", icon: "bubble.left.and.bubble.right.fill", options: phones) { Address.signal($0) }
+                        } else {
+                            // A plain username can’t be linked to, so it (or their name) is copied for Signal’s search.
                             Button {
-                                copyToClipboard(name)
+                                copyToClipboard(user.isEmpty ? name : user)
                                 if let u = URL(string: "sgnl://") { openURL(u) }
                             } label: { ActionFace(title: "signal", icon: "bubble.left.and.bubble.right.fill", enabled: true) }
                             .buttonStyle(.plain)
-                            .accessibilityHint("Copies their name and opens Signal, so you can paste it into search")
-                        } else {
-                            ActionButton(title: "signal", icon: "bubble.left.and.bubble.right.fill", options: phones) { Address.signal($0) }
+                            .accessibilityHint("Copies their \(user.isEmpty ? "name" : "username") and opens Signal, so you can paste it into search")
                         }
                     }
                 }
@@ -170,9 +175,15 @@ struct ContactDetailView: View {
         }
     }
 
+    private func ownValue(_ key: String) -> String {
+        guard let f = store.fields.first(where: { $0.key == key }) else { return "" }
+        return row?.fields[f.id] ?? detail?.fields[f.id] ?? ""
+    }
+
+    private var signalUsername: String { ownValue("signal_username").trimmingCharacters(in: .whitespaces) }
+
     private var onSignal: Bool {
-        guard detail?.archived == nil, let f = store.fields.first(where: { $0.key == "signal" }) else { return false }
-        return (row?.fields[f.id] ?? detail?.fields[f.id]) == "1"
+        detail?.archived == nil && (ownValue("signal") == "1" || !signalUsername.isEmpty)
     }
 
     private func unique(_ list: [Labeled]) -> [Labeled] {
@@ -395,8 +406,8 @@ struct FieldEditor: View {
             default:
                 TextField(field.type == "url" ? "https://" : "Add", text: $text)
                     .keyboardType(field.type == "url" ? .URL : .default)
-                    .textInputAutocapitalization(field.type == "url" ? .never : .sentences)
-                    .autocorrectionDisabled(field.type == "url")
+                    .textInputAutocapitalization(field.type == "url" || field.key == "signal_username" ? .never : .sentences)
+                    .autocorrectionDisabled(field.type == "url" || field.key == "signal_username")
                     .focused($focused)
                     .submitLabel(.done)
                     .onSubmit(save)

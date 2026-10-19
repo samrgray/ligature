@@ -1681,9 +1681,22 @@ function propRows(card) {
 // ---- Signal: contacts marked “On Signal” get a button that opens them in Signal
 
 const signalField = () => S.session.fields.find((f) => f.key === 'signal');
-const onSignal = (d) => !d.archived && d.fields?.[signalField()?.id] === '1';
+const signalUsernameField = () => S.session.fields.find((f) => f.key === 'signal_username');
+const signalUsername = (d) => (d.fields?.[signalUsernameField()?.id] || '').trim();
+const onSignal = (d) => !d.archived && (d.fields?.[signalField()?.id] === '1' || !!signalUsername(d));
+
+// A Signal username link (signal.me/#eu/…) opens their chat directly. A plain
+// username can’t be linked to, so it’s copied for Signal’s search instead.
+const signalLink = (v) => (/^https:\/\/signal\.me\/#/i.test(v) ? v : '');
 
 function signalPill(card, phones) {
+  const user = signalUsername(S.detail || {});
+  if (user && signalLink(user)) {
+    return `<a class="pill" href="${h(signalLink(user))}" target="_blank" rel="noopener noreferrer" title="Open in Signal">Signal</a>`;
+  }
+  if (user) {
+    return `<button type="button" class="pill" data-action="signal-name" title="Copies their username and opens Signal, so you can paste it into search">Signal</button>`;
+  }
   if (phones.length) {
     // Their chat, by phone number (the mobile one if there are several).
     return `<a class="pill" href="${h(signalHref(defaultPhone(phones)))}" target="_blank" rel="noopener noreferrer" title="Open in Signal">Signal</a>`;
@@ -1692,12 +1705,12 @@ function signalPill(card, phones) {
 }
 
 async function signalByName() {
-  const name = S.detail?.card.displayName || '';
+  const name = signalUsername(S.detail || {}) || S.detail?.card.displayName || '';
   try {
     await navigator.clipboard.writeText(name);
     toast(`Copied “${name}”. Paste it into Signal’s search.`);
   } catch {
-    toast('Couldn’t copy their name.');
+    toast('Couldn’t copy that.');
   }
   window.location.href = 'sgnl://';
 }
@@ -1718,7 +1731,7 @@ function ownFieldInput(f, value) {
   const common = `id="${id}" class="own-input" data-field="${h(f.id)}" autocomplete="off"`;
   if (f.type === 'longtext') return `<textarea ${common} rows="1" placeholder="Add">${h(value)}</textarea>`;
   const type = f.type === 'date' ? 'date' : f.type === 'url' ? 'url' : 'text';
-  return `<input ${common} type="${type}" value="${h(value)}" placeholder="${f.type === 'url' ? 'https://' : 'Add'}">`;
+  return `<input ${common} type="${type}" value="${h(value)}" placeholder="${f.type === 'url' ? 'https://' : f.key === 'signal_username' ? 'Username or link' : 'Add'}"${f.key === 'signal_username' ? ' autocapitalize="off" spellcheck="false"' : ''}>`;
 }
 
 function renderDetail() {
@@ -2447,7 +2460,7 @@ function renderFieldsDialog() {
             ${typeSelect(f.type, `aria-label="Type of ${h(f.label)}" data-field-type="${h(f.id)}"${f.key ? ' disabled' : ''}`)}
             ${
               f.key
-                ? `<span class="field-builtin" title="${f.key === 'signal' ? 'Built in: adds a Signal button' : 'Built in: places people on the map'}">${ICON.pin}</span>`
+                ? `<span class="field-builtin" title="${f.key === 'signal' ? 'Built in: adds a Signal button' : f.key === 'signal_username' ? 'Built in: the Signal button uses it' : 'Built in: places people on the map'}">${ICON.pin}</span>`
                 : `<button type="button" class="icon-btn" data-action="delete-field" data-id="${h(f.id)}" aria-label="Delete ${h(f.label)}">${ICON.x}</button>`
             }
           </div>`,
@@ -3777,7 +3790,11 @@ document.addEventListener('change', async (e) => {
     if (!t.checked) S.cols = S.cols.filter((c) => c.id !== id);
     return columnsChanged(`[data-col-toggle="${CSS.escape(id)}"]`);
   }
-  if (t.classList.contains('own-input')) return queueFieldSave(t, true);
+  if (t.classList.contains('own-input')) {
+    queueFieldSave(t, true);
+    if (fieldById(t.dataset.field)?.key === 'signal_username') setTimeout(renderDetailSoon, 300);
+    return;
+  }
   if (t.dataset.draft === 'accountId') draft.accountId = t.value;
   if (t.dataset.fieldLabel) {
     try {
