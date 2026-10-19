@@ -68,6 +68,7 @@ export function cleanEdit(e: unknown): CardEdit {
     emails: list(x.emails),
     urls: list(x.urls),
     addresses: addresses(x.addresses),
+    groups: Array.isArray(x.groups) ? x.groups.filter((g): g is string => typeof g === 'string').slice(0, 20) : undefined,
     notes: str(x.notes, 20000),
   };
 }

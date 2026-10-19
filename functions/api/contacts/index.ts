@@ -85,6 +85,9 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
     .first<AccountRow>();
   if (!account) throw new HttpError(400, 'Choose an account for the new contact.');
   const edit = cleanEdit(body.edit);
+  // Only lists that exist in this account (the one you were viewing, usually).
+  const lists = new Set((JSON.parse(account.groups_json ?? '[]') as { id: string }[]).map((g) => g.id));
+  edit.groups = edit.groups?.filter((g) => lists.has(g) && g !== 'contactGroups/myContacts');
   if (!edit.givenName && !edit.familyName && !edit.organization) throw new HttpError(400, 'Add a name or a company.');
 
   const p = provider(account.provider);

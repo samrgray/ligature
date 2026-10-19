@@ -110,6 +110,8 @@ export interface CardEdit {
   urls?: Labeled[];
   addresses?: Omit<Address, 'value'>[];
   notes?: string;
+  /** New contacts only: lists to put them on. */
+  groups?: string[];
 }
 
 export interface Group {

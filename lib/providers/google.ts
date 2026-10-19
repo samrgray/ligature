@@ -604,6 +604,9 @@ export const google: Provider = {
     if (edit.urls) person.urls = rebuildList(edit.urls);
     if (edit.addresses) person.addresses = rebuildAddresses(edit.addresses);
     if (edit.notes?.trim()) person.biographies = [{ value: edit.notes, contentType: 'TEXT_PLAIN' }];
+    if (edit.groups?.length) {
+      person.memberships = edit.groups.map((g) => ({ contactGroupMembership: { contactGroupResourceName: g } }));
+    }
     try {
       return toContact(await api<GooglePerson>(ctx, `/v1/people:createContact?personFields=${PERSON_FIELDS}`, {
         method: 'POST',

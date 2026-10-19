@@ -2035,6 +2035,8 @@ function startEdit(isNew) {
   const c = isNew ? null : S.detail?.card;
   draft = {
     accountId: isNew ? (S.filter.accountId || S.filter.id || S.session.accounts[0].id) : S.detail.account.id,
+    // A new contact joins the list you’re viewing.
+    groups: isNew && S.filter.type === 'group' ? [S.filter.id] : [],
     givenName: c?.givenName ?? '',
     familyName: c?.familyName ?? '',
     organization: c?.organization ?? '',
@@ -2109,7 +2111,11 @@ function renderEditor(el) {
       </div>
       <div class="detail-body"><div class="sheet form">
         <div class="banner">${
-          isNew ? 'Creates the contact in Google. It reaches your iPhone and Mac through Google.' : 'Changes save to Google and reach your iPhone and Mac.'
+          isNew
+            ? `Creates the contact in Google${
+                draft.groups.length ? `, in “${h(accountById(draft.accountId)?.groups.find((g) => g.id === draft.groups[0])?.name ?? 'this list')}”` : ''
+              }. It reaches your iPhone and Mac through Google.`
+            : 'Changes save to Google and reach your iPhone and Mac.'
         }</div>
         ${
           isNew && accounts.length > 1
