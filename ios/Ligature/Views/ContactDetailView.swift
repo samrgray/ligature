@@ -4,6 +4,9 @@ struct ContactDetailView: View {
     let id: String
     /// False for the cards beside the one you’re looking at: they don’t add toolbar buttons.
     var active = true
+    /// Closes the card (back to the list). The carousel passes its own, since a card inside it
+    /// can’t reliably dismiss the screen.
+    var onClose: (() -> Void)? = nil
     @Environment(Store.self) private var store
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
@@ -77,7 +80,7 @@ struct ContactDetailView: View {
                             Task {
                                 let done = await store.archive(.archive, ids: [id], etags: [id: detail?.etag ?? ""])
                                 working = false
-                                if !done.isEmpty { dismiss() }
+                                if !done.isEmpty { close() }
                             }
                         } label: { Label("Archive", systemImage: "archivebox") }
                     } label: { Image(systemName: "ellipsis.circle") }
@@ -94,7 +97,7 @@ struct ContactDetailView: View {
             Button("Delete Forever", role: .destructive) {
                 Task {
                     await store.archive(.forget, ids: [id])
-                    dismiss()
+                    close()
                 }
             }
         } message: {
@@ -103,7 +106,7 @@ struct ContactDetailView: View {
         .task(id: id) { await store.loadDetail(id) }
         .sheet(isPresented: $editing) {
             if let d = detail {
-                ContactEditView(mode: .edit(d), onDeleted: { dismiss() })
+                ContactEditView(mode: .edit(d), onDeleted: { close() })
             }
         }
         .sheet(isPresented: $pickingLists) {
@@ -121,6 +124,10 @@ struct ContactDetailView: View {
             if store.demoScreen == "lists" { pickingLists = true }
             if store.demoScreen == "relate" { editingRelationship = RelationshipEditTarget(me: id, existing: store.relationships(of: id).first) }
         }
+    }
+
+    private func close() {
+        if let onClose { onClose() } else { dismiss() }
     }
 
     // MARK: Header: photo, name, and message / call / email

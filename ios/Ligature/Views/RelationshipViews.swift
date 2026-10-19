@@ -7,6 +7,7 @@ struct PersonView: View {
     /// Each is a card; swipe sideways to the next or previous one.
     var order: [[String]] = []
     @Environment(Store.self) private var store
+    @Environment(\.dismiss) private var dismiss
     @State private var position: String?
     /// For people shown together: which of them each card shows.
     @State private var chosen: [String: String] = [:]
@@ -33,7 +34,7 @@ struct PersonView: View {
         ScrollView(.horizontal) {
             LazyHStack(spacing: Self.gap) {
                 ForEach(entries.compactMap(\.first), id: \.self) { lead in
-                    ContactDetailView(id: chosen[lead] ?? lead, active: lead == current)
+                    ContactDetailView(id: chosen[lead] ?? lead, active: lead == current, onClose: { dismiss() })
                         .scrollContentBackground(.hidden)
                         .background(Color(.systemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))

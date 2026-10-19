@@ -48,7 +48,7 @@ final class LigatureUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars.buttons["Edit"].waitForExistence(timeout: 3))
         sleep(1)
         let shown = { (name: String) -> Bool in
-            let t = self.app.staticTexts.matching(identifier: name).allElementsBoundByIndex
+            let t = self.app.staticTexts.matching(NSPredicate(format: "label == %@", name)).allElementsBoundByIndex
             return t.contains { $0.isHittable && self.app.frame.contains($0.frame.origin) }
         }
         XCTAssertTrue(shown("Zoe Abernathy"), "the first contact wasn’t Zoe Abernathy")
