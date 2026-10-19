@@ -3,31 +3,60 @@ import SwiftUI
 /// A contact’s screen. For people shown together, a switcher at the top moves between them.
 struct PersonView: View {
     let id: String
+    /// Everyone shown in the list you came from, in order (people shown together are one entry),
+    /// so you can swipe sideways to the next or previous person.
+    var order: [[String]] = []
     @Environment(Store.self) private var store
     @State private var current: String
+    @State private var forward = true
 
-    init(id: String) {
+    init(id: String, order: [[String]] = []) {
         self.id = id
+        self.order = order
         _current = State(initialValue: id)
     }
 
     var body: some View {
-        let members = store.together[id] ?? store.together[current] ?? []
-        ContactDetailView(id: current)
-            .id(current)
-            .toolbar {
-                if members.count > 1 {
-                    ToolbarItem(placement: .principal) {
-                        Picker("Person", selection: $current) {
-                            ForEach(members) { m in
-                                Text(m.givenName.isEmpty ? m.displayName : m.givenName).tag(m.id)
-                            }
+        let members = store.together[current] ?? store.together[id] ?? []
+        ZStack {
+            ContactDetailView(id: current)
+                .id(current)
+                .transition(.asymmetric(
+                    insertion: .move(edge: forward ? .trailing : .leading),
+                    removal: .move(edge: forward ? .leading : .trailing)
+                ))
+        }
+        .clipped()
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 30).onEnded { v in
+                // Leave the left edge to the system’s swipe back to the list.
+                let dx = v.translation.width, dy = v.translation.height
+                guard v.startLocation.x > 40, abs(dx) > 70, abs(dx) > abs(dy) * 2 else { return }
+                step(dx < 0 ? 1 : -1)
+            }
+        )
+        .sensoryFeedback(.selection, trigger: current)
+        .toolbar {
+            if members.count > 1 {
+                ToolbarItem(placement: .principal) {
+                    Picker("Person", selection: $current) {
+                        ForEach(members) { m in
+                            Text(m.givenName.isEmpty ? m.displayName : m.givenName).tag(m.id)
                         }
-                        .pickerStyle(.segmented)
-                        .fixedSize()
                     }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
                 }
             }
+        }
+    }
+
+    private func step(_ n: Int) {
+        guard let i = order.firstIndex(where: { $0.contains(current) }) else { return }
+        let j = i + n
+        guard order.indices.contains(j), let next = order[j].first else { return }
+        forward = n > 0
+        withAnimation(.easeInOut(duration: 0.25)) { current = next }
     }
 }
 

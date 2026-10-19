@@ -228,7 +228,8 @@ struct ContactsListView: View {
             }
             .toolbar(selecting ? .visible : .hidden, for: .bottomBar)
             .navigationDestination(for: String.self) { id in
-                PersonView(id: id)
+                // Swipe sideways between everyone in the list you came from.
+                PersonView(id: id, order: entries(visible).map { $0.members.map(\.id) })
             }
         }
         .sheet(isPresented: $showNew) {
