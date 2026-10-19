@@ -50,7 +50,16 @@ export function placesFor(addresses: Address[], neighborhood: string): Place[] {
     const postalcode = clean(a.postalCode);
     const country = clean(a.country);
     const structured = Boolean(city || state || postalcode || country);
-    const text = clean(a.value);
+    // Shown on the map: every filled-in part of the address, with the neighborhood before the city.
+    const text = [
+      a.street.split(/\n/).map(clean).filter(Boolean).join(', '),
+      hood,
+      city,
+      [state, postalcode].filter(Boolean).join(' '),
+      country,
+    ]
+      .filter(Boolean)
+      .join(', ') || clean(a.value);
     const cityQ = city ? { key: key({ city, state, country }), precision: 'city' as const } : null;
     if (street && structured) {
       // Exact first; then without the ZIP (OpenStreetMap’s can differ); then as plain text;
@@ -74,7 +83,7 @@ export function placesFor(addresses: Address[], neighborhood: string): Place[] {
       const tries = [...new Set([key({ q }), key({ q: [lookupStreet(a.street), ...q.split(', ').slice(1)].filter(Boolean).join(', ') })])];
       out.push({ label, precision: 'address', text, queries: tries.map((k) => ({ key: k, precision: 'address' as const })) });
     } else if (city && hood) {
-      out.push({ label, precision: 'neighborhood', text: `${hood}, ${text}`, queries: [{ key: key({ q: [hood, city, state, country].filter(Boolean).join(', ') }), precision: 'neighborhood' }, cityQ!] });
+      out.push({ label, precision: 'neighborhood', text, queries: [{ key: key({ q: [hood, city, state, country].filter(Boolean).join(', ') }), precision: 'neighborhood' }, cityQ!] });
     } else if (cityQ) {
       out.push({ label, precision: 'city', text, queries: [cityQ] });
     } else if (postalcode) {

@@ -427,7 +427,7 @@ struct MapPeopleSheet: View {
             List(people) { c in
                 let on = selection.contains(c.id)
                 let where_ = store.mapPoints.filter { $0.id == c.id }.map { p in
-                    [p.type, p.precision == "address" ? "" : p.precision].filter { !$0.isEmpty }.joined(separator: " · ")
+                    [p.type, p.text].filter { !$0.isEmpty }.joined(separator: " · ")
                 }
                 HStack(spacing: 12) {
                     Button { toggle([c.id], !on) } label: {
@@ -442,7 +442,7 @@ struct MapPeopleSheet: View {
                             Avatar(url: c.photoUrl, initials: c.initials, size: 32)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(c.displayName.isEmpty ? "No Name" : c.displayName).foregroundStyle(Color.primary)
-                                Text(where_.joined(separator: ", ")).font(.subheadline).foregroundStyle(.secondary)
+                                Text(where_.joined(separator: "\n")).font(.subheadline).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color(.tertiaryLabel))

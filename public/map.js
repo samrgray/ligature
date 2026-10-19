@@ -108,7 +108,6 @@ function loadLib() {
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-const PRECISION = { address: '', neighborhood: 'neighborhood', city: 'city', postal: 'ZIP code', region: 'region' };
 
 export class PeopleMap {
   /**
@@ -340,7 +339,7 @@ export class PeopleMap {
       f.el.classList.toggle('exact', p.precision === 'address');
       f.el.classList.toggle('photo', Boolean(photo));
       f.el.classList.toggle('sel', sel.has(p.id));
-      f.el.title = [c.displayName, p.label, PRECISION[p.precision]].filter(Boolean).join(' · ');
+      f.el.title = [c.displayName, p.label, p.text].filter(Boolean).join(' · ');
     }
     for (const [key, f] of this.faces) {
       if (!keep.has(key)) {
@@ -678,10 +677,10 @@ export class PeopleMap {
       ${ids.length > 1 ? `<div class="map-pop-h"><span>${ids.length} people</span><button type="button" class="link" data-pop-all>${allOn ? 'Deselect All' : 'Select All'}</button></div>` : ''}
       <ul>${items
         .map((x) => {
-          const where = [x.label, PRECISION[x.precision]].filter(Boolean).join(' · ');
+          const where = [x.label, x.text].filter(Boolean).join(' · ');
           return `<li><input type="checkbox" data-pop-check="${esc(x.id)}" aria-label="Select ${esc(x.name)}" ${sel.has(x.id) ? 'checked' : ''}>
             <div><button type="button" class="link" data-pop-open="${esc(x.id)}">${esc(x.name)}</button>
-            <div class="map-pop-sub" title="${esc(x.text)}">${esc(where)}</div></div></li>`;
+            <div class="map-pop-sub">${esc(where)}</div></div></li>`;
         })
         .join('')}</ul>`;
   }
