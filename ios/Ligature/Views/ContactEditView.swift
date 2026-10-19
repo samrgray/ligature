@@ -9,6 +9,8 @@ enum ContactEditMode {
 /// Edit what Google keeps for a contact (or create one). Your own fields are edited on the card.
 struct ContactEditView: View {
     let mode: ContactEditMode
+    /// For a new contact: the list you were viewing, which they join.
+    var list: ListRef? = nil
     var onDeleted: () -> Void = {}
 
     @Environment(Store.self) private var store
@@ -47,6 +49,13 @@ struct ContactEditView: View {
         NavigationStack {
             Form {
                 photoSection
+                if original == nil, let list, let name = store.listName(list.id, accountId: list.accountId) {
+                    Section {
+                        Label("Adds them to \(name)", systemImage: "list.bullet")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Section {
                     TextField("First name", text: $given).textContentType(.givenName)
                     TextField("Last name", text: $family).textContentType(.familyName)
@@ -302,8 +311,10 @@ struct ContactEditView: View {
                     error = "Add a name, company, phone or email."
                     return
                 }
-                guard let account = store.accounts.first else { return }
-                let d = try await store.create(accountId: account.id, edit: edit)
+                guard let accountId = list?.accountId ?? store.accounts.first?.id else { return }
+                var edit = edit
+                if let list { edit["groups"] = [list.id] }
+                let d = try await store.create(accountId: accountId, edit: edit)
                 if let p = newPhoto { try await store.setPhoto(d.id, etag: d.etag, jpeg: p.jpeg) }
             case let .edit(d):
                 var etag = d.etag

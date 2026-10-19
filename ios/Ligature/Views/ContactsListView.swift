@@ -237,7 +237,14 @@ struct ContactsListView: View {
                 PersonView(id: id)
             }
         }
-        .sheet(isPresented: $showNew) { ContactEditView(mode: .new) }
+        .sheet(isPresented: $showNew) {
+            // A new contact joins the list you’re viewing.
+            if case let .list(accountId, id) = filter {
+                ContactEditView(mode: .new, list: ListRef(accountId: accountId, id: id))
+            } else {
+                ContactEditView(mode: .new)
+            }
+        }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showLists) { ManageListsView() }
         .sheet(isPresented: $showArchive) { ArchivedView() }

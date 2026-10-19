@@ -130,7 +130,7 @@ extension Store {
         let row = ContactRow(
             id: "demo-new-\(contacts.count)", accountId: "demo", givenName: first, familyName: last,
             displayName: [first, last].filter { !$0.isEmpty }.joined(separator: " "), organization: edit["organization"] as? String ?? "",
-            title: "", email: "", phone: "", photoUrl: "", search: "\(first) \(last)".lowercased(), groups: [], fields: [:]
+            title: "", email: "", phone: "", photoUrl: "", search: "\(first) \(last)".lowercased(), groups: edit["groups"] as? [String] ?? [], fields: [:]
         )
         contacts.append(row)
         let d = demoDetail(row)
