@@ -224,6 +224,7 @@ function renderShell() {
           <span class="sel-tools" id="sel-tools"></span>
           <div class="bar-actions">
             <button type="button" class="btn" data-action="columns">${ICON.columns} Columns</button>
+            <button type="button" class="btn" data-action="add-to-list" id="add-to-list-btn" title="Add people to this list (A)" aria-label="Add people to this list" hidden>${ICON.plus} Add</button>
             <button type="button" class="btn" data-action="compose" id="msg-btn">Message All</button>
             <button type="button" class="btn primary" data-action="new">New Contact</button>
           </div>
@@ -240,10 +241,13 @@ function renderShell() {
     <dialog id="confirm-dlg" class="confirm-dlg" aria-labelledby="confirm-title"></dialog>
     <dialog id="photo-dlg" class="photo-dlg" aria-label="Photo"></dialog>
     <dialog id="rel-dlg" class="rel-dlg" aria-labelledby="rel-title"></dialog>
-    <dialog id="compose-dlg" class="compose-dlg" aria-labelledby="compose-title"></dialog>`;
+    <dialog id="compose-dlg" class="compose-dlg" aria-labelledby="compose-title"></dialog>
+    <dialog id="keys-dlg" class="keys-dlg" aria-labelledby="keys-title"></dialog>
+    <dialog id="add-dlg" class="add-dlg" aria-labelledby="add-title"></dialog>`;
   $('#detail').inert = true;
   applySidebar();
   $('#rel-dlg').addEventListener('close', () => (RD = null));
+  $('#add-dlg').addEventListener('close', () => (AD = null));
   $('#rel-dlg').addEventListener('submit', (e) => {
     e.preventDefault();
     saveRelationship();
@@ -581,6 +585,7 @@ function renderSidebar() {
 
     <div class="sidebar-foot">
       <button class="link" data-action="fields">Your Fields…</button>
+      <button class="link" data-action="shortcuts" title="Keyboard shortcuts (?)">Shortcuts</button>
       <a class="link" href="/api/backup" download title="Downloads everything Ligature keeps for you, as one file">Download Backup</a>
       <button class="link" data-action="logout">Sign Out</button>
       ${themeButton()}
@@ -1112,6 +1117,8 @@ function syncChecks() {
     msg.textContent = n ? `Message ${n}` : 'Message All';
     msg.hidden = inArchive(); // archived people aren’t in Google, so there’s nothing to message
   }
+  const addBtn = $('#add-to-list-btn');
+  if (addBtn) addBtn.hidden = !currentList();
   if (S.layout === 'map') mapView?.refreshSelection();
 }
 
@@ -3617,6 +3624,10 @@ document.addEventListener('click', async (e) => {
       return sync();
     case 'add-rel':
       return openRelDialog();
+    case 'shortcuts':
+      return openShortcuts();
+    case 'add-to-list':
+      return openAddToList();
     case 'signal-name':
       return signalByName();
     case 'compose':
@@ -4003,6 +4014,252 @@ document.addEventListener('submit', (e) => {
   if (e.target.id === 'fields-form' && e.submitter?.dataset.action === 'add-field') e.preventDefault();
 });
 
+// ---------------------------------------------------------------- keyboard shortcuts
+
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform);
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+
+/** Shown in the shortcuts dialog (press ?). The keys themselves are handled below. */
+const SHORTCUTS = [
+  ['Anywhere', [
+    [['?'], 'Show keyboard shortcuts'],
+    [['/'], 'Search'],
+    [['N'], 'New contact'],
+    [['A'], 'Add people to the list you’re viewing'],
+    [['M'], 'Switch between table and map'],
+    [['['], 'Previous list'],
+    [[']'], 'Next list'],
+    [['C'], 'Message the people shown, or the ones ticked'],
+    [['F'], 'Your fields'],
+    [IS_MAC ? ['⌃', '⌘', 'S'] : ['Ctrl', 'Alt', 'S'], 'Show or hide the sidebar'],
+  ]],
+  ['Table', [
+    [['↑'], 'Previous contact'],
+    [['↓'], 'Next contact'],
+    [['K'], 'Previous contact'],
+    [['J'], 'Next contact'],
+    [['Return'], 'Open the highlighted contact'],
+    [['X'], 'Tick or untick the highlighted contact'],
+    [[MOD, 'A'], 'Tick everyone shown'],
+    [['Esc'], 'Close the contact, then clear the ticks'],
+  ]],
+  ['Contact', [
+    [['E'], 'Edit the open contact'],
+    [[MOD, 'Return'], 'Save your edits'],
+    [['Esc'], 'Close'],
+  ]],
+];
+
+function openShortcuts() {
+  const dlg = $('#keys-dlg');
+  dlg.innerHTML = `<form method="dialog" class="dlg">
+      <h2 id="keys-title">Keyboard Shortcuts</h2>
+      ${SHORTCUTS.map(
+        ([group, rows]) => `<section class="keys-group"><h3>${h(group)}</h3><dl>${rows
+          .map(([keys, label]) => `<dt>${keys.map((k) => `<kbd>${h(k)}</kbd>`).join('')}</dt><dd>${h(label)}</dd>`)
+          .join('')}</dl></section>`,
+      ).join('')}
+      <div class="dlg-foot"><button class="btn primary" value="close">Done</button></div>
+    </form>`;
+  dlg.showModal();
+}
+
+/** The list you’re viewing, if people can be added to it. */
+function currentList() {
+  const f = S.filter;
+  if (f.type !== 'group' || f.id === 'contactGroups/myContacts') return null;
+  const g = accountById(f.accountId)?.groups.find((x) => x.id === f.id);
+  return g ? { accountId: f.accountId, group: g } : null;
+}
+
+function stepList(step) {
+  const items = [...document.querySelectorAll('.sidebar .nav-item[data-filter]')];
+  if (!items.length) return;
+  const i = items.findIndex((b) => b.getAttribute('aria-current') === 'true');
+  items[(i + step + items.length) % items.length].click();
+}
+
+// ---- add people to the list you’re viewing: search everyone, Return adds the best match
+
+let AD = null; // { accountId, groupId, name, query, hi, added: [] , busy }
+
+/** How well a contact matches what you typed: their name first, then anything else about them. */
+function matchScore(c, q) {
+  const name = (c.displayName || '').toLowerCase();
+  const words = q.split(/\s+/).filter(Boolean);
+  const nameWords = name.split(/[\s\-.,]+/).filter(Boolean);
+  if (name === q) return 100;
+  if (name.startsWith(q)) return 90;
+  if (nameWords.some((w) => w.startsWith(q))) return 80;
+  if (words.every((w) => nameWords.some((n) => n.startsWith(w)))) return 70;
+  if (name.includes(q)) return 60;
+  if (words.every((w) => c.search.includes(w))) return 40;
+  return 0;
+}
+
+function addMatches() {
+  const q = AD.query.trim().toLowerCase();
+  if (!q) return [];
+  return S.contacts
+    .filter((c) => c.accountId === AD.accountId)
+    .map((c) => ({ c, score: matchScore(c, q), member: c.groups.includes(AD.groupId) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || collator.compare(nameKey(a.c), nameKey(b.c)))
+    .slice(0, 8);
+}
+
+function openAddToList() {
+  const l = currentList();
+  if (!l) return toast('Open a list first.');
+  AD = { accountId: l.accountId, groupId: l.group.id, name: l.group.name, query: '', hi: 0, added: [] };
+  const dlg = $('#add-dlg');
+  dlg.innerHTML = `<form class="dlg add-form" id="add-form">
+      <h2 id="add-title">Add to ${h(l.group.name)}</h2>
+      <input class="input" id="add-q" type="text" placeholder="Search all contacts" autocomplete="off" spellcheck="false"
+        role="combobox" aria-expanded="true" aria-controls="add-results" aria-label="Search all contacts">
+      <div class="add-results" id="add-results" role="listbox" aria-label="Matches"></div>
+      <p class="add-note" id="add-note" role="status" aria-live="polite">Type a name, then press Return to add the highlighted person.</p>
+      <div class="dlg-foot"><button type="button" class="btn primary" data-action="add-done">Done</button></div>
+    </form>`;
+  dlg.showModal();
+  $('#add-q').focus();
+  fillAddResults();
+}
+
+function fillAddResults() {
+  if (!AD) return;
+  const rows = addMatches();
+  // The best match is highlighted, unless they’re already on the list (then arrow down to pick
+  // someone else, so Return never adds a weaker match by surprise).
+  const pickable = rows.map((x, i) => (x.member ? -1 : i)).filter((i) => i >= 0);
+  if (!pickable.includes(AD.hi)) AD.hi = -1;
+  const note = $('#add-note');
+  const n = AD.added.length;
+  if (rows[0]?.member && AD.hi < 0) note.textContent = `${rows[0].c.displayName || 'No name'} is already in ${AD.name}.`;
+  else if (n) note.textContent = `Added ${AD.added[n - 1]}${n > 1 ? ` (${n} so far)` : ''}.`;
+  else note.textContent = 'Type a name, then press Return to add the highlighted person.';
+  $('#add-results').innerHTML = rows
+    .map(({ c, member }, i) => {
+      const av = c.photoUrl ? `<img src="${h(thumb(c.photoUrl))}" alt="" referrerpolicy="no-referrer">` : h(initials(c));
+      const sub = [c.organization, c.email].filter(Boolean).join(' · ');
+      return `<button type="button" role="option" class="add-row" data-add-id="${h(c.id)}" aria-selected="${i === AD.hi}"${member ? ' disabled' : ''}>
+          <span class="mini-av" aria-hidden="true">${av}</span>
+          <span class="add-who"><span class="cell-name">${h(c.displayName || 'No name')}</span>${sub ? `<span class="muted">${h(sub)}</span>` : ''}</span>
+          ${member ? '<span class="muted add-tag">In this list</span>' : i === AD.hi ? '<kbd>Return</kbd>' : ''}
+        </button>`;
+    })
+    .join('');
+  const sel = $('#add-results [aria-selected="true"]');
+  sel?.scrollIntoView({ block: 'nearest' });
+}
+
+function moveAddHighlight(step) {
+  const rows = addMatches();
+  const pickable = rows.map((x, i) => (x.member ? -1 : i)).filter((i) => i >= 0);
+  if (!pickable.length) return;
+  const at = pickable.indexOf(AD.hi);
+  AD.hi = at < 0 ? pickable[0] : pickable[Math.max(0, Math.min(pickable.length - 1, at + step))];
+  fillAddResults();
+}
+
+async function addHighlighted(id) {
+  if (!AD || AD.busy) return;
+  const c = contactById(id ?? addMatches()[AD.hi]?.c.id);
+  if (!c || c.groups.includes(AD.groupId)) return;
+  AD.busy = true;
+  const ad = AD;
+  try {
+    const r = await api('/lists', { method: 'POST', body: { action: 'members', accountId: ad.accountId, groupId: ad.groupId, add: [c.id] } });
+    applyListResult(ad.accountId, r);
+    if (AD !== ad) return;
+    ad.added.push(c.displayName || 'No name');
+    ad.query = '';
+    $('#add-q').value = '';
+    fillAddResults();
+    $('#add-q').focus();
+  } catch (e) {
+    handleError(e);
+  } finally {
+    ad.busy = false;
+  }
+}
+
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'add-q' || !AD) return;
+  AD.query = e.target.value;
+  AD.hi = 0;
+  fillAddResults();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.id !== 'add-q' || !AD) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    moveAddHighlight(e.key === 'ArrowDown' ? 1 : -1);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    addHighlighted();
+  }
+});
+
+document.addEventListener('click', (e) => {
+  const row = e.target.closest?.('[data-add-id]');
+  if (row) return addHighlighted(row.dataset.addId);
+  if (e.target.closest?.('[data-action="add-done"]')) $('#add-dlg').close();
+});
+
+/** Single-key shortcuts, when you’re not typing in a field. */
+function handleShortcut(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return false;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const open = S.drawer && S.detail && S.mode === 'view';
+  switch (k) {
+    case '?':
+      openShortcuts();
+      return true;
+    case '/':
+      $('#q')?.focus();
+      $('#q')?.select();
+      return true;
+    case 'n':
+      $('[data-action="new"]')?.click();
+      return true;
+    case 'a':
+      openAddToList();
+      return true;
+    case 'm':
+      setLayout(S.layout === 'map' ? 'table' : 'map');
+      return true;
+    case '[':
+    case ']':
+      stepList(k === ']' ? 1 : -1);
+      return true;
+    case 'c':
+      if (inArchive()) return false;
+      $('[data-action="compose"]')?.click();
+      return true;
+    case 'f':
+      $('[data-action="fields"]')?.click();
+      return true;
+    case 'j':
+    case 'k':
+      if (S.mode !== 'view') return false;
+      moveSelection(k === 'j' ? 1 : -1);
+      return true;
+    case 'x':
+      if (!S.selectedId) return false;
+      toggleChecked(S.selectedId);
+      syncChecks();
+      return true;
+    case 'e':
+      if (!open || S.detail.archived) return false;
+      startEdit(false);
+      return true;
+    default:
+      return false;
+  }
+}
+
 document.addEventListener('keydown', (e) => {
   // Enter in the new-field box adds it instead of closing the dialog.
   if (e.key === 'Enter' && e.target.id === 'new-field-label') {
@@ -4028,6 +4285,15 @@ document.addEventListener('keydown', (e) => {
       return closeDrawer();
     }
     if (S.selected.size && !inField) return clearSelection();
+    return;
+  }
+  // Cmd/Ctrl-Return saves the contact you’re editing.
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && (S.mode === 'edit' || S.mode === 'new')) {
+    e.preventDefault();
+    return saveEditor();
+  }
+  if (!inField && !e.repeat && handleShortcut(e)) {
+    e.preventDefault();
     return;
   }
   // Cmd/Ctrl-A in the table selects everyone shown.

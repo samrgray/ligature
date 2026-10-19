@@ -768,3 +768,33 @@ details.past > summary .count { font-weight: 400; color: var(--secondary); font-
   white-space: normal; overflow: hidden; overflow-wrap: anywhere; line-height: 18px;
 }
 .wrap-cells .grid .cell-open { white-space: normal; }
+
+/* Keyboard shortcuts */
+kbd {
+  display: inline-block; min-width: 20px; padding: 1px 5px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px;
+  background: var(--bg); color: var(--text); font: 500 11px/16px system-ui, -apple-system, sans-serif; text-align: center;
+}
+dialog.keys-dlg { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); }
+.keys-group h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.keys-group dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; align-items: center; }
+.keys-group dt { display: flex; gap: 3px; }
+.keys-group dd { margin: 0; }
+
+/* Add people to a list */
+dialog.add-dlg { width: min(480px, calc(100vw - 32px)); margin-top: 12vh; }
+.add-results { display: flex; flex-direction: column; min-height: 0; max-height: 360px; overflow-y: auto; }
+.add-results:not(:empty) { border: 1px solid var(--border); border-radius: 8px; padding: 4px; }
+.add-row {
+  display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 8px; border: 0; border-radius: 6px;
+  background: none; text-align: left; color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+}
+.add-row[aria-selected="true"] { background: var(--accent); color: #fff; }
+.add-row[aria-selected="true"] .muted { color: #fff; }
+.add-row[aria-selected="true"] kbd { background: transparent; color: #fff; border-color: #fff; }
+.add-row:not([aria-selected="true"]):not(:disabled):hover { background: var(--hover); }
+.add-row:disabled { cursor: default; color: var(--secondary); }
+.add-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.add-who > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.add-row .muted { color: var(--secondary); font-size: 12px; }
+.add-tag { flex: none; }
+.add-note { margin: 0; font-size: 12px; color: var(--secondary); }
