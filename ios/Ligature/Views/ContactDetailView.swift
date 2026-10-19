@@ -15,6 +15,7 @@ struct ContactDetailView: View {
     @State private var confirmForget = false
     @State private var working = false
     private var detail: ContactDetail? { store.details[id] }
+    @State private var pastOpen = false
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -322,28 +323,50 @@ struct ContactDetailView: View {
         return order.map { l in (l, listName(byList[l]![0]).name, byList[l]!) }
     }
 
+    private var pastGroups: [(key: String, name: String, deleted: Bool, fields: [FieldDef])] {
+        var order: [String] = []
+        var byList: [String: [FieldDef]] = [:]
+        for f in pastFields {
+            let k = "\(f.accountId ?? "")|\(f.listId ?? "")"
+            if byList[k] == nil { order.append(k) }
+            byList[k, default: []].append(f)
+        }
+        return order.map { k in
+            let l = listName(byList[k]![0])
+            return (k, l.name, l.deleted, byList[k]!)
+        }
+    }
+
+    /// Collapsed until you open it; values grouped under the list they came from.
     private var pastSection: some View {
         Section {
-            ForEach(pastFields) { f in
-                let list = listName(f)
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(f.label).font(.subheadline).foregroundStyle(.secondary)
-                        Text(pastValue(f)).textSelection(.enabled)
-                        Text(list.deleted ? "\(list.name) (deleted)" : list.name).font(.caption).foregroundStyle(.secondary)
+            DisclosureGroup(isExpanded: $pastOpen) {
+                ForEach(pastGroups, id: \.key) { group in
+                    HStack(spacing: 6) {
+                        Text(group.name).font(.subheadline.weight(.semibold))
+                        Text(group.deleted ? "Deleted list" : "Not on this list").font(.subheadline).foregroundStyle(.secondary)
                     }
-                    Spacer()
+                    ForEach(group.fields) { f in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(f.label).font(.subheadline).foregroundStyle(.secondary)
+                            Text(pastValue(f)).textSelection(.enabled)
+                        }
+                        .swipeActions {
+                            Button("Remove", role: .destructive) {
+                                Task { await store.saveField(id, fieldId: f.id, value: "") }
+                            }
+                        }
+                    }
                 }
-                .swipeActions {
-                    Button("Remove", role: .destructive) {
-                        Task { await store.saveField(id, fieldId: f.id, value: "") }
-                    }
+            } label: {
+                HStack {
+                    Text("Past Fields")
+                    Spacer()
+                    Text("\(pastFields.count)").foregroundStyle(.secondary)
                 }
             }
-        } header: {
-            Text("Past Fields")
         } footer: {
-            Text("From lists they’re no longer on, or that were deleted. Swipe to remove one.")
+            Text("From lists they’re no longer on, or that were deleted. Swipe a value to remove it.")
         }
     }
 

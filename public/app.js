@@ -1906,22 +1906,41 @@ function pastValue(f, v) {
   return h(v);
 }
 
+let pastOpenFor = null; // the contact whose Past fields you opened, so a re-render keeps it open
+
 function pastFieldsSection(past, d) {
-  return `<section class="own past" aria-labelledby="past-h">
-      <div class="own-h">
-        <h2 id="past-h">Past fields</h2>
+  const lists = [...new Set(past.map((f) => `${f.accountId}|${f.listId}`))].map((k) => past.filter((f) => `${f.accountId}|${f.listId}` === k));
+  return `<details class="own past" id="past-fields" data-contact="${h(d.id)}"${pastOpenFor === d.id ? ' open' : ''}>
+      <summary class="own-h">
+        <h2>${ICON.down} Past fields <span class="count">${past.length}</span></h2>
         <p>From lists they’re no longer on, or that were deleted.</p>
-      </div>
-      <dl class="props">${past
-        .map((f) => {
-          const gone = !fieldList(f);
-          return `<dt>${h(f.label)}<span class="field-list">${h(fieldListName(f))}${gone ? ' (deleted)' : ''}</span></dt>
-            <dd class="past-row"><span class="past-value">${pastValue(f, d.fields[f.id])}</span>
-              <button type="button" class="icon-btn" data-action="clear-past" data-id="${h(f.id)}" aria-label="Remove ${h(f.label)}" title="Remove">${ICON.x}</button></dd>`;
+      </summary>
+      ${lists
+        .map((fields) => {
+          const f0 = fields[0];
+          const status = fieldList(f0) ? 'Not on this list' : 'Deleted list';
+          return `<div class="past-list">
+            <h3>${h(fieldListName(f0))} <span>${status}</span></h3>
+            <dl class="props">${fields
+              .map(
+                (f) => `<dt>${h(f.label)}</dt>
+                  <dd class="past-row"><span class="past-value">${pastValue(f, d.fields[f.id])}</span>
+                    <button type="button" class="icon-btn" data-action="clear-past" data-id="${h(f.id)}" aria-label="Remove ${h(f.label)}" title="Remove">${ICON.x}</button></dd>`,
+              )
+              .join('')}</dl>
+          </div>`;
         })
-        .join('')}</dl>
-    </section>`;
+        .join('')}
+    </details>`;
 }
+
+document.addEventListener(
+  'toggle',
+  (e) => {
+    if (e.target.id === 'past-fields') pastOpenFor = e.target.open ? e.target.dataset.contact : null;
+  },
+  true,
+);
 
 // ---------------------------------------------------------------- relationships
 

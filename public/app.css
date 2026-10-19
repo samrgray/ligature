@@ -751,3 +751,13 @@ dialog.rel-dlg { width: min(420px, calc(100vw - 32px)); }
 .show-names .face.grouped .face-name { display: none; }
 .face:hover .face-name, .show-names .face.grouped:hover .face-name { display: block; }
 .own-input.own-check { width: 16px; height: 16px; min-height: 0; margin: 8px 0 0; padding: 0; }
+
+details.past > summary { cursor: pointer; list-style: none; }
+details.past > summary::-webkit-details-marker { display: none; }
+details.past > summary h2 { display: inline-flex; align-items: center; gap: 6px; }
+details.past > summary h2 svg { transform: rotate(-90deg); transition: transform 0.15s; color: var(--secondary); }
+details.past[open] > summary h2 svg { transform: none; }
+details.past > summary .count { font-weight: 400; color: var(--secondary); font-size: 13px; }
+.past-list { margin-top: 14px; }
+.past-list h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.past-list h3 span { font-weight: 400; color: var(--secondary); margin-left: 6px; }
