@@ -15,7 +15,7 @@ export const onRequestPatch: PagesFunction<Env, 'id', Data> = async ({ request, 
     args.push(label);
     sets.push(`label = ?${args.length}`);
   }
-  if (body.type !== undefined && body.type !== 'text') {
+  if (body.type !== undefined) {
     const f = await env.DB.prepare('SELECT key FROM field_defs WHERE id = ?1 AND user_id = ?2').bind(String(params.id), user.id).first<{ key: string | null }>();
     if (f?.key) throw new HttpError(400, 'This field is built in, so its type can’t change.');
   }

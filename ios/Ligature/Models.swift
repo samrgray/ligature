@@ -54,8 +54,8 @@ struct ContactList: Codable, Identifiable, Hashable {
 struct FieldDef: Codable, Identifiable, Hashable {
     let id: String
     let label: String
-    let type: String // text, longtext, date, url
-    /// Built-in fields: "neighborhood".
+    let type: String // text, longtext, date, url, checkbox
+    /// Built-in fields: "neighborhood", "signal".
     var key: String?
 }
 

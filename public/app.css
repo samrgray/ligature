@@ -741,3 +741,4 @@ dialog.rel-dlg { width: min(420px, calc(100vw - 32px)); }
 .map-pin { z-index: 4; }
 .show-names .face.grouped .face-name { display: none; }
 .face:hover .face-name, .show-names .face.grouped:hover .face-name { display: block; }
+.own-input.own-check { width: 16px; height: 16px; min-height: 0; margin: 8px 0 0; padding: 0; }

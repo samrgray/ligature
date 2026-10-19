@@ -18,6 +18,7 @@ extension Store {
             FieldDef(id: "interests", label: "Interests", type: "text"),
             FieldDef(id: "hood", label: "Neighborhood", type: "text", key: "neighborhood"),
             FieldDef(id: "notes", label: "Private notes", type: "longtext"),
+            FieldDef(id: "signal", label: "On Signal", type: "checkbox", key: "signal"),
         ]
         let people: [(String, String, String, String, [String])] = [
             ("Zoe", "Abernathy", "", "", ["contactGroups/family"]),
@@ -51,6 +52,7 @@ extension Store {
             let phone = String(format: "(503) 555-01%02d", i + 10)
             var fields: [String: String] = [:]
             if i % 3 == 0 { fields["met"] = ["Design Week", "Neighbors", "College", "Book club"][i % 4] }
+            if i % 4 == 1 { fields["signal"] = "1" }
             if i == 7 { fields["follow"] = "2026-11-02"; fields["interests"] = "Ceramics, trail running" }
             return ContactRow(
                 id: "demo-\(i)", accountId: "demo", givenName: first, familyName: last, displayName: "\(first) \(last)",

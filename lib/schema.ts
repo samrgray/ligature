@@ -177,6 +177,13 @@ const MIGRATIONS: string[][] = [
     )`,
     `CREATE INDEX IF NOT EXISTS archives_user ON archives(user_id)`,
   ],
+  [
+    // Built-in “On Signal” checkbox: puts a Signal button on the contact.
+    `INSERT INTO field_defs (id, user_id, label, type, position, created_at, key)
+       SELECT lower(hex(randomblob(16))), u.id, 'On Signal', 'checkbox',
+         (SELECT COALESCE(MAX(position), -1) + 1 FROM field_defs f WHERE f.user_id = u.id), CAST(strftime('%s', 'now') AS INTEGER) * 1000, 'signal'
+       FROM users u WHERE NOT EXISTS (SELECT 1 FROM field_defs f WHERE f.user_id = u.id AND f.key = 'signal')`,
+  ],
 ];
 
 let ready: Promise<void> | null = null;
@@ -209,6 +216,7 @@ async function migrate(db: D1Database): Promise<void> {
 export const DEFAULT_FIELDS: { label: string; type: string; key?: string }[] = [
   { label: 'How we met', type: 'text' },
   { label: 'Neighborhood', type: 'text', key: 'neighborhood' },
+  { label: 'On Signal', type: 'checkbox', key: 'signal' },
   { label: 'Follow up', type: 'date' },
   { label: 'Interests', type: 'text' },
   { label: 'Private notes', type: 'longtext' },
@@ -217,4 +225,4 @@ export const DEFAULT_FIELDS: { label: string; type: string; key?: string }[] = [
 /** Relationship kinds. parent and manager are one-way: a is the parent or manager of b. */
 export const RELATIONSHIP_KINDS = ['spouse', 'partner', 'parent', 'sibling', 'relative', 'friend', 'colleague', 'manager', 'other'] as const;
 
-export const FIELD_TYPES = ['text', 'longtext', 'date', 'url'] as const;
+export const FIELD_TYPES = ['text', 'longtext', 'date', 'url', 'checkbox'] as const;

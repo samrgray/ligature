@@ -149,6 +149,18 @@ struct ContactDetailView: View {
                     ActionButton(title: "message", icon: "message.fill", options: phones) { Links.sms($0) }
                     ActionButton(title: "call", icon: "phone.fill", options: phones) { Links.tel($0) }
                     ActionButton(title: "mail", icon: "envelope.fill", options: emails) { Links.mail($0) }
+                    if onSignal {
+                        if phones.isEmpty {
+                            Button {
+                                copyToClipboard(name)
+                                if let u = URL(string: "sgnl://") { openURL(u) }
+                            } label: { ActionFace(title: "signal", icon: "bubble.left.and.bubble.right.fill", enabled: true) }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Copies their name and opens Signal, so you can paste it into search")
+                        } else {
+                            ActionButton(title: "signal", icon: "bubble.left.and.bubble.right.fill", options: phones) { Address.signal($0) }
+                        }
+                    }
                 }
                 .padding(.top, 6)
             }
@@ -156,6 +168,11 @@ struct ContactDetailView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
         }
+    }
+
+    private var onSignal: Bool {
+        guard detail?.archived == nil, let f = store.fields.first(where: { $0.key == "signal" }) else { return false }
+        return (row?.fields[f.id] ?? detail?.fields[f.id]) == "1"
     }
 
     private func unique(_ list: [Labeled]) -> [Labeled] {
@@ -286,15 +303,23 @@ struct ActionButton: View {
         }
     }
 
-    private var face: some View {
+    private var face: some View { ActionFace(title: title, icon: icon, enabled: !options.isEmpty) }
+}
+
+struct ActionFace: View {
+    let title: String
+    let icon: String
+    let enabled: Bool
+
+    var body: some View {
         VStack(spacing: 4) {
             Image(systemName: icon).font(.system(size: 18, weight: .medium))
             Text(title).font(.caption2.weight(.medium))
         }
-        .foregroundStyle(options.isEmpty ? Color.secondary : Color.accentColor)
+        .foregroundStyle(enabled ? Color.accentColor : Color.secondary)
         .frame(maxWidth: .infinity, minHeight: 56)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.secondarySystemGroupedBackground)))
-        .opacity(options.isEmpty ? 0.6 : 1)
+        .opacity(enabled ? 1 : 0.6)
     }
 }
 
@@ -356,8 +381,12 @@ struct FieldEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(field.label).font(.subheadline).foregroundStyle(.secondary)
+            if field.type != "checkbox" {
+                Text(field.label).font(.subheadline).foregroundStyle(.secondary)
+            }
             switch field.type {
+            case "checkbox":
+                Toggle(field.label, isOn: Binding(get: { text == "1" }, set: { text = $0 ? "1" : ""; save() }))
             case "date": dateEditor
             case "longtext":
                 TextField("Add", text: $text, axis: .vertical)

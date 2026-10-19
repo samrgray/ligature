@@ -698,9 +698,10 @@ function columnDefs() {
       own: true,
       field: f,
       nums: f.type === 'date',
-      w: f.type === 'date' ? 130 : f.type === 'longtext' ? 260 : 180,
+      w: f.type === 'checkbox' ? 100 : f.type === 'date' ? 130 : f.type === 'longtext' ? 260 : 180,
       text: (c) => {
         const v = c.fields?.[f.id] ?? '';
+        if (f.type === 'checkbox') return v === '1' ? '✓' : '';
         return f.type === 'date' ? shortDay(v) : oneLine(v);
       },
       sort: (c) => c.fields?.[f.id] ?? '',
@@ -1677,8 +1678,43 @@ function propRows(card) {
   return rows;
 }
 
+// ---- Signal: contacts marked “On Signal” get a button that opens them in Signal
+
+const signalField = () => S.session.fields.find((f) => f.key === 'signal');
+const onSignal = (d) => !d.archived && d.fields?.[signalField()?.id] === '1';
+
+function signalPill(card, phones) {
+  if (phones.length) {
+    // Their chat, by phone number (the mobile one if there are several).
+    return `<a class="pill" href="${h(signalHref(defaultPhone(phones)))}" target="_blank" rel="noopener noreferrer" title="Open in Signal">Signal</a>`;
+  }
+  return `<button type="button" class="pill" data-action="signal-name" title="Copies their name and opens Signal, so you can paste it into search">Signal</button>`;
+}
+
+async function signalByName() {
+  const name = S.detail?.card.displayName || '';
+  try {
+    await navigator.clipboard.writeText(name);
+    toast(`Copied “${name}”. Paste it into Signal’s search.`);
+  } catch {
+    toast('Couldn’t copy their name.');
+  }
+  window.location.href = 'sgnl://';
+}
+
+let detailTimer;
+function renderDetailSoon() {
+  clearTimeout(detailTimer);
+  detailTimer = setTimeout(() => {
+    if (S.mode === 'view' && !document.activeElement?.matches?.('textarea, input:not([type="checkbox"])')) renderDetail();
+  }, 50);
+}
+
 function ownFieldInput(f, value) {
   const id = `own-${f.id}`;
+  if (f.type === 'checkbox') {
+    return `<input type="checkbox" id="${id}" class="own-input own-check" data-field="${h(f.id)}"${value === '1' ? ' checked' : ''}>`;
+  }
   const common = `id="${id}" class="own-input" data-field="${h(f.id)}" autocomplete="off"`;
   if (f.type === 'longtext') return `<textarea ${common} rows="1" placeholder="Add">${h(value)}</textarea>`;
   const type = f.type === 'date' ? 'date' : f.type === 'url' ? 'url' : 'text';
@@ -1735,10 +1771,11 @@ function renderDetail() {
           <h1>${h(c.displayName || 'No name')}</h1>
           ${subtitle ? `<div class="subtitle">${h(subtitle)}</div>` : ''}
           ${
-            phones.length || emails.length
+            phones.length || emails.length || onSignal(d)
               ? `<div class="pills">
                   ${phones.length ? `<span class="pill-set">${actionPill('sms', 'Message', phones)}${actionPill('tel', 'Call', phones)}</span>` : ''}
                   ${emails.length ? `<span class="pill-set">${actionPill('mailto', 'Email', emails)}</span>` : ''}
+                  ${onSignal(d) ? signalPill(c, phones) : ''}
                 </div>`
               : ''
           }
@@ -1984,7 +2021,7 @@ const pending = new Map();
 let saveTimer;
 
 function queueFieldSave(input, immediate) {
-  pending.set(input.dataset.field, input.value);
+  pending.set(input.dataset.field, input.type === 'checkbox' ? (input.checked ? '1' : '') : input.value);
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flushFieldSaves, immediate ? 0 : 700);
 }
@@ -2395,6 +2432,7 @@ function renderFieldsDialog() {
       ['longtext', 'Long text'],
       ['date', 'Date'],
       ['url', 'Link'],
+      ['checkbox', 'Checkbox'],
     ]
       .map(([v, l]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${l}</option>`)
       .join('')}</select>`;
@@ -2409,7 +2447,7 @@ function renderFieldsDialog() {
             ${typeSelect(f.type, `aria-label="Type of ${h(f.label)}" data-field-type="${h(f.id)}"${f.key ? ' disabled' : ''}`)}
             ${
               f.key
-                ? `<span class="field-builtin" title="Built in: places people on the map">${ICON.pin}</span>`
+                ? `<span class="field-builtin" title="${f.key === 'signal' ? 'Built in: adds a Signal button' : 'Built in: places people on the map'}">${ICON.pin}</span>`
                 : `<button type="button" class="icon-btn" data-action="delete-field" data-id="${h(f.id)}" aria-label="Delete ${h(f.label)}">${ICON.x}</button>`
             }
           </div>`,
@@ -3170,6 +3208,20 @@ function gridClick(e) {
     return true;
   }
   const editable = t.closest('td[data-edit]');
+  if (editable && fieldById(editable.dataset.edit)?.type === 'checkbox' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    // A checkbox column toggles in place.
+    const row = S.contacts.find((c) => c.id === id);
+    if (!row) return true;
+    const fieldId = editable.dataset.edit;
+    const original = row.fields?.[fieldId] ?? '';
+    const value = original === '1' ? '' : '1';
+    row.fields = { ...(row.fields || {}) };
+    if (value) row.fields[fieldId] = value;
+    else delete row.fields[fieldId];
+    renderGrid();
+    saveCellValue({ id, fieldId, value, original }, row);
+    return true;
+  }
   if (editable && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
     startCellEdit(id, editable.dataset.edit);
     return true;
@@ -3409,6 +3461,8 @@ document.addEventListener('click', async (e) => {
       return sync();
     case 'add-rel':
       return openRelDialog();
+    case 'signal-name':
+      return signalByName();
     case 'compose':
       return openComposer();
     case 'columns':
@@ -3648,7 +3702,10 @@ document.addEventListener('input', (e) => {
   }
   if (t.classList.contains('own-input')) {
     if (t.tagName === 'TEXTAREA') autosize(t);
-    if (t.type !== 'date') queueFieldSave(t, false);
+    if (t.type === 'checkbox') {
+      queueFieldSave(t, true);
+      setTimeout(renderDetailSoon, 300); // the Signal button follows the checkbox
+    } else if (t.type !== 'date') queueFieldSave(t, false);
     return;
   }
   if (!draft) return;
