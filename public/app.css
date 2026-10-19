@@ -128,7 +128,7 @@ dialog.confirm-dlg { width: min(420px, calc(100vw - 32px)); }
 body.resizing-sidebar, body.resizing-sidebar * { cursor: col-resize !important; user-select: none; }
 @media (max-width: 820px) { .sidebar-resize { display: none; } }
 .sidebar { background: var(--sidebar); border-right: 1px solid var(--border); padding: 20px 12px 12px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-x: clip; } /* the closed detail drawer sits off to the right */
 .content { position: relative; flex: 1; min-height: 0; display: flex; }
 .scrim { display: none; }
 .mobile-only { display: none; }
