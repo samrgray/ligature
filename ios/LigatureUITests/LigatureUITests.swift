@@ -38,6 +38,26 @@ final class LigatureUITests: XCTestCase {
         tapRowOpensCard("ui-tap-notabs")
     }
 
+    func testSwipeBetweenContacts() {
+        app.terminate()
+        app.launchArguments = ["-demo", "-nopins"]
+        app.launch()
+        XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
+        sleep(1)
+        app.cells.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars.buttons["Edit"].waitForExistence(timeout: 3))
+        sleep(1)
+        let first = app.staticTexts["Zoe Abernathy"].exists
+        app.swipeLeft()
+        sleep(1)
+        shot("ui-swipe-next")
+        XCTAssertTrue(first, "the first contact wasn’t Zoe Abernathy")
+        XCTAssertTrue(app.staticTexts["Jonah Albrecht"].waitForExistence(timeout: 3), "swiping left didn’t show the next person")
+        app.swipeRight()
+        XCTAssertTrue(app.staticTexts["Zoe Abernathy"].waitForExistence(timeout: 3), "swiping right didn’t go back")
+        XCTAssertTrue(app.navigationBars.buttons["Edit"].exists, "a swipe left the contact")
+    }
+
     func testSelectModeTicksPeople() {
         XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
         app.navigationBars.buttons["Select"].tap()
