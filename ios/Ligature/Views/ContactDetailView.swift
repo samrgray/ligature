@@ -50,8 +50,7 @@ struct ContactDetailView: View {
         .listStyle(.insetGrouped)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if !active {
-            } else if archived != nil {
+            if active && archived != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button(role: .destructive) { confirmForget = true } label: { Label("Delete Forever", systemImage: "trash") }
@@ -70,7 +69,7 @@ struct ContactDetailView: View {
                     .bold()
                     .disabled(working)
                 }
-            } else {
+            } else if active {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
