@@ -47,14 +47,19 @@ final class LigatureUITests: XCTestCase {
         app.cells.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars.buttons["Edit"].waitForExistence(timeout: 3))
         sleep(1)
-        let first = app.staticTexts["Zoe Abernathy"].exists
+        let shown = { (name: String) -> Bool in
+            let t = self.app.staticTexts.matching(identifier: name).allElementsBoundByIndex
+            return t.contains { $0.isHittable && self.app.frame.contains($0.frame.origin) }
+        }
+        XCTAssertTrue(shown("Zoe Abernathy"), "the first contact wasn’t Zoe Abernathy")
         app.swipeLeft()
-        sleep(1)
+        sleep(2)
         shot("ui-swipe-next")
-        XCTAssertTrue(first, "the first contact wasn’t Zoe Abernathy")
-        XCTAssertTrue(app.staticTexts["Jonah Albrecht"].waitForExistence(timeout: 3), "swiping left didn’t show the next person")
+        XCTAssertTrue(shown("Jonah Albrecht"), "swiping left didn’t show the next person")
+        XCTAssertFalse(shown("Zoe Abernathy"), "the first card is still showing")
         app.swipeRight()
-        XCTAssertTrue(app.staticTexts["Zoe Abernathy"].waitForExistence(timeout: 3), "swiping right didn’t go back")
+        sleep(2)
+        XCTAssertTrue(shown("Zoe Abernathy"), "swiping right didn’t go back")
         XCTAssertTrue(app.navigationBars.buttons["Edit"].exists, "a swipe left the contact")
     }
 

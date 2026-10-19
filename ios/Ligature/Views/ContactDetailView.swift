@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContactDetailView: View {
     let id: String
+    /// False for the cards beside the one you’re looking at: they don’t add toolbar buttons.
+    var active = true
     @Environment(Store.self) private var store
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
@@ -48,7 +50,8 @@ struct ContactDetailView: View {
         .listStyle(.insetGrouped)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if archived != nil {
+            if !active {
+            } else if archived != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button(role: .destructive) { confirmForget = true } label: { Label("Delete Forever", systemImage: "trash") }

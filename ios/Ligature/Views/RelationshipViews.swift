@@ -3,43 +3,58 @@ import SwiftUI
 /// A contact’s screen. For people shown together, a switcher at the top moves between them.
 struct PersonView: View {
     let id: String
-    /// Everyone shown in the list you came from, in order (people shown together are one entry),
-    /// so you can swipe sideways to the next or previous person.
+    /// Everyone shown in the list you came from, in order (people shown together are one entry).
+    /// Each is a card; swipe sideways to the next or previous one.
     var order: [[String]] = []
     @Environment(Store.self) private var store
-    @State private var current: String
-    @State private var forward = true
+    @State private var position: String?
+    /// For people shown together: which of them each card shows.
+    @State private var chosen: [String: String] = [:]
 
     init(id: String, order: [[String]] = []) {
         self.id = id
         self.order = order
-        _current = State(initialValue: id)
+        let entry = order.first { $0.contains(id) }
+        _position = State(initialValue: entry?.first ?? id)
+        if let lead = entry?.first, lead != id { _chosen = State(initialValue: [lead: id]) }
     }
 
+    /// The cards: the list you came from, or just this person (with whoever’s shown with them).
+    private var entries: [[String]] {
+        order.contains { $0.contains(id) } ? order : [[id]]
+    }
+
+    private static let inset: CGFloat = 14
+    private static let gap: CGFloat = 8
+
     var body: some View {
-        let members = store.together[current] ?? store.together[id] ?? []
-        ZStack {
-            ContactDetailView(id: current)
-                .id(current)
-                .transition(.asymmetric(
-                    insertion: .move(edge: forward ? .trailing : .leading),
-                    removal: .move(edge: forward ? .leading : .trailing)
-                ))
-        }
-        .clipped()
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 30).onEnded { v in
-                // Leave the left edge to the system’s swipe back to the list.
-                let dx = v.translation.width, dy = v.translation.height
-                guard v.startLocation.x > 40, abs(dx) > 70, abs(dx) > abs(dy) * 2 else { return }
-                step(dx < 0 ? 1 : -1)
+        let current = position ?? id
+        let members = store.together[chosen[current] ?? current] ?? store.together[current] ?? []
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: Self.gap) {
+                ForEach(entries.compactMap(\.first), id: \.self) { lead in
+                    ContactDetailView(id: chosen[lead] ?? lead, active: lead == current)
+                        .scrollContentBackground(.hidden)
+                        .background(Color(.systemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color(.separator).opacity(0.5), lineWidth: 0.5))
+                        .shadow(color: .black.opacity(0.08), radius: 10, y: 2)
+                        .padding(.vertical, 8)
+                        .containerRelativeFrame(.horizontal) { w, _ in w - Self.inset * 2 }
+                }
             }
-        )
-        .sensoryFeedback(.selection, trigger: current)
+            .scrollTargetLayout()
+        }
+        .contentMargins(.horizontal, Self.inset, for: .scrollContent)
+        .scrollTargetBehavior(.viewAligned)
+        .scrollPosition(id: $position)
+        .scrollIndicators(.hidden)
+        .background(Color(.systemGray5).ignoresSafeArea())
+        .sensoryFeedback(.selection, trigger: position)
         .toolbar {
             if members.count > 1 {
                 ToolbarItem(placement: .principal) {
-                    Picker("Person", selection: $current) {
+                    Picker("Person", selection: Binding(get: { chosen[current] ?? current }, set: { chosen[current] = $0 })) {
                         ForEach(members) { m in
                             Text(m.givenName.isEmpty ? m.displayName : m.givenName).tag(m.id)
                         }
@@ -49,14 +64,6 @@ struct PersonView: View {
                 }
             }
         }
-    }
-
-    private func step(_ n: Int) {
-        guard let i = order.firstIndex(where: { $0.contains(current) }) else { return }
-        let j = i + n
-        guard order.indices.contains(j), let next = order[j].first else { return }
-        forward = n > 0
-        withAnimation(.easeInOut(duration: 0.25)) { current = next }
     }
 }
 
