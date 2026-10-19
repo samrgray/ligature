@@ -1053,7 +1053,7 @@ function gridRow(c, j, members, i, cols) {
         if (j > 0) return '';
         const name = together ? togetherName(members) : v;
         const avs = together ? `<span class="av-stack">${members.slice(0, 3).map(av).join('')}</span>` : av(c);
-        return `<td class="c-name"${span} data-ids="${h(ids.join(' '))}"${together ? ` title="${h(name)}"` : ''}><button type="button" class="cell-open" data-open="${h(c.id)}">${avs}<span class="cell-name">${h(name)}</span></button></td>`;
+        return `<td class="c-name"${span} data-ids="${h(ids.join(' '))}"${together ? ` title="${h(name)}"` : ''}><button type="button" class="cell-open" data-open="${h(c.id)}" draggable="${inArchive() ? 'false' : 'true'}">${avs}<span class="cell-name">${h(name)}</span></button></td>`;
       }
       const tip = together ? `${c.displayName || 'No name'}: ${v}` : v;
       const title = (together && v) || v.length > 20 ? ` title="${h(tip)}"` : '';
@@ -4040,6 +4040,53 @@ document.addEventListener('drop', (e) => {
   e.preventDefault();
   zone.classList.remove('drop');
   stagePhoto(e.dataTransfer.files[0]);
+});
+
+// Drag people from the table onto a list in the sidebar to add them to it. Dragging someone
+// who’s ticked brings everyone ticked.
+let dragPeople = null; // contact ids
+document.addEventListener('dragstart', (e) => {
+  const btn = e.target.closest?.('#grid .cell-open[draggable="true"]');
+  if (!btn) return;
+  const ids = btn.closest('td').dataset.ids.split(' ').filter(Boolean);
+  dragPeople = ids.some((id) => S.selected.has(id)) ? [...new Set([...S.selected, ...ids])] : ids;
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', dragPeople.map((id) => contactById(id)?.displayName || '').join(', '));
+  const chip = document.createElement('div');
+  chip.className = 'drag-chip';
+  chip.textContent = dragPeople.length === 1 ? contactById(dragPeople[0])?.displayName || 'No name' : `${dragPeople.length} people`;
+  document.body.append(chip);
+  e.dataTransfer.setDragImage(chip, 12, 14);
+  setTimeout(() => chip.remove(), 0);
+  document.body.classList.add('dragging-people');
+});
+const peopleTarget = (e) => (dragPeople ? e.target.closest?.('nav[aria-label="Lists"] .nav-item[data-filter="group"]') : null);
+document.addEventListener('dragover', (e) => {
+  const item = peopleTarget(e);
+  document.querySelectorAll('.nav-item.people-drop').forEach((x) => x !== item && x.classList.remove('people-drop'));
+  if (!item || item.dataset.id === 'contactGroups/myContacts') return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  item.classList.add('people-drop');
+});
+document.addEventListener('drop', (e) => {
+  const item = peopleTarget(e);
+  if (!item) return;
+  e.preventDefault();
+  item.classList.remove('people-drop');
+  const accountId = item.dataset.account;
+  const groupId = item.dataset.id;
+  const name = accountById(accountId)?.groups.find((g) => g.id === groupId)?.name ?? 'the list';
+  const people = dragPeople.map(contactById).filter((c) => c && c.accountId === accountId);
+  const add = people.filter((c) => !c.groups.includes(groupId)).map((c) => c.id);
+  if (!add.length) return toast(people.length ? `${people.length === 1 ? 'Already' : 'All already'} in ${name}.` : 'They’re in a different account.', 2500);
+  changeMembers({ action: 'members', accountId, groupId, add }, false);
+});
+document.addEventListener('dragend', () => {
+  if (!dragPeople) return;
+  dragPeople = null;
+  document.body.classList.remove('dragging-people');
+  document.querySelectorAll('.nav-item.people-drop').forEach((x) => x.classList.remove('people-drop'));
 });
 
 // Drag to reorder in the Columns dialog.
