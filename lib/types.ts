@@ -55,6 +55,8 @@ export interface ContactRow {
   merged_into: string | null;
   deleted_at: number | null;
   archived_at?: number | null;
+  /** 1 for a draft: only in Ligature, not (yet) in the provider. */
+  draft?: number;
   updated_at: number;
   created_at: number;
 }

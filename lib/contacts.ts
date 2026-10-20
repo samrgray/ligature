@@ -50,6 +50,24 @@ export async function saveFromProvider(db: D1Database, row: ContactRow, pc: Prov
   return next;
 }
 
+/** Save a draft’s new data (drafts live only here, so this is their whole write). */
+export async function saveDraft(db: D1Database, row: ContactRow, raw: unknown, providerId: string): Promise<ContactRow> {
+  return saveFromProvider(db, row, { providerContactId: row.provider_contact_id, etag: crypto.randomUUID(), deleted: false, linkIds: [row.id], raw }, providerId);
+}
+
+/** Put drafts on a list or take them off (Ligature-only, like the drafts themselves). */
+export async function setDraftMembership(db: D1Database, rows: ContactRow[], groupId: string, on: boolean, providerId: string): Promise<ContactRow[]> {
+  const p = provider(providerId);
+  const out: ContactRow[] = [];
+  for (const r of rows) {
+    const raw = JSON.parse(r.data_json ?? '{}');
+    const groups = p.toCard(raw).groups.filter((g) => g !== groupId);
+    if (on) groups.push(groupId);
+    out.push(await saveDraft(db, r, p.setDraftGroups(raw, groups), providerId));
+  }
+  return out;
+}
+
 /**
  * Reload several contacts from the provider and write them to the cache in one batch
  * (after a change made outside the contact itself, like adding it to a list).
@@ -152,7 +170,7 @@ export async function syncAccount(env: Env, db: D1Database, user: UserRow, accou
            (SELECT COUNT(*) FROM field_values fv WHERE fv.contact_id = c.id)
              + (SELECT COUNT(*) FROM interactions i WHERE i.contact_id = c.id)
              + (SELECT COUNT(*) FROM relationships r WHERE r.a_id = c.id OR r.b_id = c.id) AS nvals
-         FROM contacts c WHERE c.account_id = ?1 AND c.archived_at IS NULL`,
+         FROM contacts c WHERE c.account_id = ?1 AND c.archived_at IS NULL AND c.draft = 0`,
       )
       .bind(account.id)
       .all<ExistingRow>()

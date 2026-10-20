@@ -2,7 +2,7 @@ import type { Data, Env } from '../../../../lib/types';
 import { HttpError, json, readJson } from '../../../../lib/http';
 import { requireUser } from '../../../../lib/session';
 import { provider } from '../../../../lib/providers';
-import { cached, loadContact, saveFromProvider } from '../../../../lib/contacts';
+import { cached, loadContact, saveDraft, saveFromProvider } from '../../../../lib/contacts';
 import { contactPayload } from '../../../../lib/payload';
 
 const MAX_BASE64 = 2_000_000; // about 1.5 MB of image; the browser sends a 512 px JPEG
@@ -27,9 +27,10 @@ async function prepare(ctx: Ctx, etag: unknown) {
     });
   };
   if (etag !== row.etag) await conflict();
+  if (row.draft) return { user, row, account, p, pctx, draft: true };
   const current = await p.get(pctx, row.provider_contact_id);
   if (current.etag !== row.etag) await conflict(await saveFromProvider(ctx.env.DB, row, current, account.provider));
-  return { user, row, account, p, pctx };
+  return { user, row, account, p, pctx, draft: false };
 }
 
 // PUT /api/contacts/:id/photo  { etag, image }  → set the photo in Google (JPEG, base64).
@@ -38,14 +39,18 @@ export const onRequestPut: PagesFunction<Env, 'id', Data> = async (ctx) => {
   if (typeof body.image !== 'string' || !body.image) throw new HttpError(400, 'No image.');
   const image = body.image.replace(/^data:image\/\w+;base64,/, '');
   if (image.length > MAX_BASE64 || !/^[A-Za-z0-9+/]+=*$/.test(image)) throw new HttpError(400, 'That image is too large or not readable.');
-  const { user, row, account, p, pctx } = await prepare(ctx, body.etag);
-  const saved = await saveFromProvider(ctx.env.DB, row, await p.setPhoto(pctx, cached(row), image), account.provider);
+  const { user, row, account, p, pctx, draft } = await prepare(ctx, body.etag);
+  const saved = draft
+    ? await saveDraft(ctx.env.DB, row, p.setDraftPhoto(JSON.parse(row.data_json ?? '{}'), image), account.provider)
+    : await saveFromProvider(ctx.env.DB, row, await p.setPhoto(pctx, cached(row), image), account.provider);
   return json(await contactPayload(ctx.env.DB, user, saved, account));
 };
 
 // DELETE /api/contacts/:id/photo?etag=…  → remove the photo in Google.
 export const onRequestDelete: PagesFunction<Env, 'id', Data> = async (ctx) => {
-  const { user, row, account, p, pctx } = await prepare(ctx, new URL(ctx.request.url).searchParams.get('etag'));
-  const saved = await saveFromProvider(ctx.env.DB, row, await p.deletePhoto(pctx, cached(row)), account.provider);
+  const { user, row, account, p, pctx, draft } = await prepare(ctx, new URL(ctx.request.url).searchParams.get('etag'));
+  const saved = draft
+    ? await saveDraft(ctx.env.DB, row, p.setDraftPhoto(JSON.parse(row.data_json ?? '{}'), null), account.provider)
+    : await saveFromProvider(ctx.env.DB, row, await p.deletePhoto(pctx, cached(row)), account.provider);
   return json(await contactPayload(ctx.env.DB, user, saved, account));
 };

@@ -2,7 +2,7 @@ import type { AccountRow, ContactRow, Data, Env, Group } from '../../lib/types';
 import { HttpError, json, readJson } from '../../lib/http';
 import { requireUser } from '../../lib/session';
 import { provider } from '../../lib/providers';
-import { refreshContacts } from '../../lib/contacts';
+import { refreshContacts, setDraftMembership } from '../../lib/contacts';
 
 const MAX_MEMBERS = 1000;
 
@@ -102,7 +102,15 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
               .all<ContactRow>()
           ).results
         : [];
-      changed = await refreshContacts(env, account, rows);
+      const drafts = (
+        await env.DB
+          .prepare(
+            `SELECT * FROM contacts WHERE account_id = ?1 AND draft = 1 AND deleted_at IS NULL AND merged_into IS NULL AND instr(data_json, ?2) > 0`,
+          )
+          .bind(account.id, `"${g.id}"`)
+          .all<ContactRow>()
+      ).results;
+      changed = [...(await refreshContacts(env, account, rows)), ...(await setDraftMembership(env.DB, drafts, g.id, false, account.provider))];
       await liftSublists(env.DB, user.id, account.id, g.id);
       break;
     }
@@ -116,13 +124,21 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
       const addRows = await ownRows(add);
       const removeRows = await ownRows(remove);
       skipped = add.length + remove.length - addRows.length - removeRows.length;
-      await p.modifyGroup(
-        ctx,
-        g.id,
-        addRows.map((r) => r.provider_contact_id),
-        removeRows.map((r) => r.provider_contact_id),
-      );
-      changed = await refreshContacts(env, account, [...addRows, ...removeRows]);
+      const real = (rows: ContactRow[]) => rows.filter((r) => !r.draft);
+      if (real(addRows).length || real(removeRows).length) {
+        await p.modifyGroup(
+          ctx,
+          g.id,
+          real(addRows).map((r) => r.provider_contact_id),
+          real(removeRows).map((r) => r.provider_contact_id),
+        );
+      }
+      changed = [
+        ...(await refreshContacts(env, account, [...real(addRows), ...real(removeRows)])),
+        // Drafts aren’t in Google: their lists change here.
+        ...(await setDraftMembership(env.DB, addRows.filter((r) => r.draft), g.id, true, account.provider)),
+        ...(await setDraftMembership(env.DB, removeRows.filter((r) => r.draft), g.id, false, account.provider)),
+      ];
       group = g;
       break;
     }

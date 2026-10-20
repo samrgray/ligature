@@ -29,14 +29,14 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
   const rows = (
     await env.DB
       .prepare(
-        `SELECT c.id, c.account_id, c.data_json, a.provider,
+        `SELECT c.id, c.account_id, c.data_json, c.draft, a.provider,
            (SELECT json_group_object(fv.field_id, fv.value) FROM field_values fv WHERE fv.contact_id = c.id) AS fields_json
          FROM contacts c JOIN accounts a ON a.id = c.account_id
          WHERE c.user_id = ?1 AND c.deleted_at IS NULL AND c.merged_into IS NULL AND c.archived_at IS NULL
          ORDER BY c.sort_key`,
       )
       .bind(user.id)
-      .all<{ id: string; account_id: string; data_json: string; provider: string; fields_json: string | null }>()
+      .all<{ id: string; account_id: string; data_json: string; draft: number; provider: string; fields_json: string | null }>()
   ).results;
   const defs = await fieldDefsFor(env.DB, user.id);
 
@@ -66,6 +66,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
         search: searchText(card, fields, defs, r.account_id),
         groups: card.groups,
         fields,
+        ...(r.draft ? { draft: true } : {}),
       };
     }),
   });
@@ -74,7 +75,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
 // POST /api/contacts  { accountId, edit }  → create in the provider.
 export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request, env, data }) => {
   const user = requireUser(data.user);
-  const body = await readJson<{ accountId?: string; edit?: CardEdit }>(request);
+  const body = await readJson<{ accountId?: string; edit?: CardEdit; draft?: boolean }>(request);
   const account = await env.DB
     .prepare('SELECT * FROM accounts WHERE id = ?1 AND user_id = ?2')
     .bind(body.accountId ?? '', user.id)
@@ -88,7 +89,10 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
 
   const p = provider(account.provider);
   const id = crypto.randomUUID();
-  const pc = await p.create({ env, db: env.DB, account }, edit, id);
+  // A draft stays in Ligature: the same fields, in Google’s shape, but nothing sent to Google.
+  const pc = body.draft
+    ? { providerContactId: `draft:${id}`, etag: crypto.randomUUID(), deleted: false, linkIds: [id], raw: p.draftRaw(edit) }
+    : await p.create({ env, db: env.DB, account }, edit, id);
   const card = p.toCard(pc.raw);
   const t = now();
   const row: ContactRow = {
@@ -105,14 +109,15 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
     deleted_at: null,
     updated_at: t,
     created_at: t,
+    draft: body.draft ? 1 : 0,
   };
   await env.DB
     .prepare(
       `INSERT INTO contacts (id, user_id, account_id, provider_contact_id, etag, display_name, sort_key, data_json,
-         link_stamped, merged_into, deleted_at, updated_at, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL, NULL, ?10, ?10)`,
+         link_stamped, merged_into, deleted_at, updated_at, created_at, draft)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL, NULL, ?10, ?10, ?11)`,
     )
-    .bind(row.id, row.user_id, row.account_id, row.provider_contact_id, row.etag, row.display_name, row.sort_key, row.data_json, row.link_stamped, t)
+    .bind(row.id, row.user_id, row.account_id, row.provider_contact_id, row.etag, row.display_name, row.sort_key, row.data_json, row.link_stamped, t, body.draft ? 1 : 0)
     .run();
   return json(await contactPayload(env.DB, user, row, account), 201);
 };

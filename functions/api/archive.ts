@@ -13,14 +13,14 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
   const rows = (
     await env.DB
       .prepare(
-        `SELECT c.id, c.account_id, a.provider, ar.person_json, ar.groups_json, ar.photo, ar.archived_at,
+        `SELECT c.id, c.account_id, c.draft, a.provider, ar.person_json, ar.groups_json, ar.photo, ar.archived_at,
            (SELECT json_group_object(fv.field_id, fv.value) FROM field_values fv WHERE fv.contact_id = c.id) AS fields_json
          FROM contacts c JOIN archives ar ON ar.contact_id = c.id JOIN accounts a ON a.id = c.account_id
          WHERE c.user_id = ?1 AND c.archived_at IS NOT NULL AND c.deleted_at IS NULL AND c.merged_into IS NULL
          ORDER BY c.sort_key`,
       )
       .bind(user.id)
-      .all<{ id: string; account_id: string; provider: string; person_json: string; groups_json: string; photo: string | null; archived_at: number; fields_json: string | null }>()
+      .all<{ id: string; account_id: string; draft: number; provider: string; person_json: string; groups_json: string; photo: string | null; archived_at: number; fields_json: string | null }>()
   ).results;
   const defs = await fieldDefsFor(env.DB, user.id);
   return json({
@@ -47,6 +47,7 @@ export const onRequestGet: PagesFunction<Env, string, Data> = async ({ env, data
         groups: JSON.parse(r.groups_json) as string[],
         fields,
         archivedAt: r.archived_at,
+        ...(r.draft ? { draft: true } : {}),
       };
     }),
   });
@@ -93,6 +94,24 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
       for (const r of list) {
         if (typeof seen[r.id] === 'string' && seen[r.id] !== r.etag) {
           skipped.push({ id: r.id, reason: 'changed' });
+          continue;
+        }
+        if (r.draft) {
+          // A draft is already only here: keep it as it is, and nothing goes to Google.
+          const raw = JSON.parse(r.data_json ?? '{}');
+          const photoUrl = p.toCard(raw).photoUrl;
+          const t = now();
+          await env.DB.batch([
+            env.DB
+              .prepare(
+                `INSERT INTO archives (contact_id, user_id, person_json, groups_json, photo, archived_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                 ON CONFLICT(contact_id) DO UPDATE SET person_json = excluded.person_json, groups_json = excluded.groups_json,
+                   photo = excluded.photo, archived_at = excluded.archived_at`,
+              )
+              .bind(r.id, user.id, r.data_json ?? '{}', JSON.stringify(p.toCard(raw).groups), photoUrl.startsWith('data:') ? photoUrl.split(',')[1] : null, t),
+            env.DB.prepare('UPDATE contacts SET archived_at = ?2 WHERE id = ?1').bind(r.id, t),
+          ]);
+          done.push(r.id);
           continue;
         }
         try {
@@ -143,6 +162,15 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
         continue;
       }
       const p = provider(account.provider);
+      if (r.draft) {
+        // Back as a draft, still only in Ligature.
+        await env.DB.batch([
+          env.DB.prepare('UPDATE contacts SET archived_at = NULL WHERE id = ?1').bind(r.id),
+          env.DB.prepare('DELETE FROM archives WHERE contact_id = ?1').bind(r.id),
+        ]);
+        done.push(r.id);
+        continue;
+      }
       const existing = new Set((JSON.parse(account.groups_json ?? '[]') as Group[]).map((g) => g.id));
       // Back on the lists that still exist. Google adds everyone to My Contacts itself.
       const groups = (JSON.parse(a.groups_json) as string[]).filter((g) => existing.has(g) && g !== 'contactGroups/myContacts');

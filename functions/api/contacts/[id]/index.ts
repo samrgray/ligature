@@ -2,7 +2,7 @@ import type { Data, Env } from '../../../../lib/types';
 import { HttpError, json, readJson } from '../../../../lib/http';
 import { requireUser } from '../../../../lib/session';
 import { provider } from '../../../../lib/providers';
-import { cached, loadContact, saveFromProvider } from '../../../../lib/contacts';
+import { cached, loadContact, saveDraft, saveFromProvider } from '../../../../lib/contacts';
 import { cleanEdit, contactPayload } from '../../../../lib/payload';
 
 // GET /api/contacts/:id
@@ -22,6 +22,17 @@ export const onRequestPatch: PagesFunction<Env, 'id', Data> = async ({ request, 
   if (row.archived_at) throw new HttpError(409, 'This contact is archived. Restore it to edit it.', 'archived');
   const p = provider(account.provider);
   const ctx = { env, db: env.DB, account };
+
+  // A draft is only here: check it’s the copy you saw, then save it.
+  if (row.draft) {
+    if (body.etag !== row.etag) {
+      throw new HttpError(409, 'This draft changed since you opened it. It’s been reloaded; make your edit again.', 'conflict', {
+        contact: await contactPayload(env.DB, user, row, account),
+      });
+    }
+    const saved = await saveDraft(env.DB, row, p.editDraft(JSON.parse(row.data_json ?? '{}'), cleanEdit(body.edit)), account.provider);
+    return json(await contactPayload(env.DB, user, saved, account));
+  }
 
   const conflict = async () => {
     const fresh = await saveFromProvider(env.DB, row, await p.get(ctx, row.provider_contact_id), account.provider);

@@ -392,6 +392,55 @@ function groupError(e: unknown): never {
   toHttpError(e);
 }
 
+/** The fields an edit changes, as Google wants them for updateContact. */
+function editBody(p: GooglePerson, edit: CardEdit): { body: Record<string, unknown>; fields: string[] } {
+  const body: Record<string, unknown> = {};
+  const fields: string[] = [];
+
+  if (edit.givenName !== undefined || edit.familyName !== undefined) {
+    const { displayName, displayNameLastFirst, unstructuredName, metadata, ...rest } = (p.names?.[0] ?? {}) as Record<string, unknown>;
+    void displayName; void displayNameLastFirst; void unstructuredName; void metadata;
+    const given = (edit.givenName ?? (rest.givenName as string) ?? '').trim();
+    const family = (edit.familyName ?? (rest.familyName as string) ?? '').trim();
+    body.names = given || family ? [{ ...rest, givenName: given, familyName: family }] : [];
+    fields.push('names');
+  }
+  if (edit.organization !== undefined || edit.title !== undefined) {
+    const { metadata, ...rest } = (p.organizations?.[0] ?? {}) as Record<string, unknown>;
+    void metadata;
+    const name = (edit.organization ?? (rest.name as string) ?? '').trim();
+    const title = (edit.title ?? (rest.title as string) ?? '').trim();
+    body.organizations = name || title ? [{ ...rest, name, title }, ...(p.organizations ?? []).slice(1)] : (p.organizations ?? []).slice(1);
+    fields.push('organizations');
+  }
+  if (edit.phones) { body.phoneNumbers = rebuildList(edit.phones); fields.push('phoneNumbers'); }
+  if (edit.emails) { body.emailAddresses = rebuildList(edit.emails); fields.push('emailAddresses'); }
+  if (edit.urls) { body.urls = rebuildList(edit.urls); fields.push('urls'); }
+  if (edit.addresses) { body.addresses = rebuildAddresses(edit.addresses, p.addresses); fields.push('addresses'); }
+  if (edit.notes !== undefined) {
+    body.biographies = edit.notes.trim() ? [{ value: edit.notes, contentType: 'TEXT_PLAIN' }] : [];
+    fields.push('biographies');
+  }
+  return { body, fields };
+}
+
+/** A new contact as Google wants it for createContact. */
+function newPerson(edit: CardEdit): Record<string, unknown> {
+  const person: Record<string, unknown> = {
+    names: [{ givenName: edit.givenName?.trim() ?? '', familyName: edit.familyName?.trim() ?? '' }],
+  };
+  if (edit.organization || edit.title) person.organizations = [{ name: edit.organization ?? '', title: edit.title ?? '' }];
+  if (edit.phones) person.phoneNumbers = rebuildList(edit.phones);
+  if (edit.emails) person.emailAddresses = rebuildList(edit.emails);
+  if (edit.urls) person.urls = rebuildList(edit.urls);
+  if (edit.addresses) person.addresses = rebuildAddresses(edit.addresses);
+  if (edit.notes?.trim()) person.biographies = [{ value: edit.notes, contentType: 'TEXT_PLAIN' }];
+  if (edit.groups?.length) {
+    person.memberships = edit.groups.map((g) => ({ contactGroupMembership: { contactGroupResourceName: g } }));
+  }
+  return person;
+}
+
 export const google: Provider = {
   id: 'google',
   name: 'Google',
@@ -553,33 +602,8 @@ export const google: Provider = {
 
   async update(ctx, contact, edit) {
     const p = contact.raw as GooglePerson;
-    const body: Record<string, unknown> = { etag: contact.etag };
-    const fields: string[] = [];
-
-    if (edit.givenName !== undefined || edit.familyName !== undefined) {
-      const { displayName, displayNameLastFirst, unstructuredName, metadata, ...rest } = (p.names?.[0] ?? {}) as Record<string, unknown>;
-      void displayName; void displayNameLastFirst; void unstructuredName; void metadata;
-      const given = (edit.givenName ?? (rest.givenName as string) ?? '').trim();
-      const family = (edit.familyName ?? (rest.familyName as string) ?? '').trim();
-      body.names = given || family ? [{ ...rest, givenName: given, familyName: family }] : [];
-      fields.push('names');
-    }
-    if (edit.organization !== undefined || edit.title !== undefined) {
-      const { metadata, ...rest } = (p.organizations?.[0] ?? {}) as Record<string, unknown>;
-      void metadata;
-      const name = (edit.organization ?? (rest.name as string) ?? '').trim();
-      const title = (edit.title ?? (rest.title as string) ?? '').trim();
-      body.organizations = name || title ? [{ ...rest, name, title }, ...(p.organizations ?? []).slice(1)] : (p.organizations ?? []).slice(1);
-      fields.push('organizations');
-    }
-    if (edit.phones) { body.phoneNumbers = rebuildList(edit.phones); fields.push('phoneNumbers'); }
-    if (edit.emails) { body.emailAddresses = rebuildList(edit.emails); fields.push('emailAddresses'); }
-    if (edit.urls) { body.urls = rebuildList(edit.urls); fields.push('urls'); }
-    if (edit.addresses) { body.addresses = rebuildAddresses(edit.addresses, p.addresses); fields.push('addresses'); }
-    if (edit.notes !== undefined) {
-      body.biographies = edit.notes.trim() ? [{ value: edit.notes, contentType: 'TEXT_PLAIN' }] : [];
-      fields.push('biographies');
-    }
+    const { body, fields } = editBody(p, edit);
+    body.etag = contact.etag;
     if (!fields.length) return toContact(p);
 
     try {
@@ -594,19 +618,7 @@ export const google: Provider = {
   },
 
   async create(ctx, edit, linkId) {
-    const person: Record<string, unknown> = {
-      names: [{ givenName: edit.givenName?.trim() ?? '', familyName: edit.familyName?.trim() ?? '' }],
-      clientData: [{ key: LINK_KEY, value: linkId }],
-    };
-    if (edit.organization || edit.title) person.organizations = [{ name: edit.organization ?? '', title: edit.title ?? '' }];
-    if (edit.phones) person.phoneNumbers = rebuildList(edit.phones);
-    if (edit.emails) person.emailAddresses = rebuildList(edit.emails);
-    if (edit.urls) person.urls = rebuildList(edit.urls);
-    if (edit.addresses) person.addresses = rebuildAddresses(edit.addresses);
-    if (edit.notes?.trim()) person.biographies = [{ value: edit.notes, contentType: 'TEXT_PLAIN' }];
-    if (edit.groups?.length) {
-      person.memberships = edit.groups.map((g) => ({ contactGroupMembership: { contactGroupResourceName: g } }));
-    }
+    const person = { ...newPerson(edit), clientData: [{ key: LINK_KEY, value: linkId }] };
     try {
       return toContact(await api<GooglePerson>(ctx, `/v1/people:createContact?personFields=${PERSON_FIELDS}`, {
         method: 'POST',
@@ -615,6 +627,29 @@ export const google: Provider = {
     } catch (e) {
       toHttpError(e);
     }
+  },
+
+  // Drafts: kept only in Ligature, in Google’s own shape, so making one real is a restore.
+  draftRaw(edit) {
+    return newPerson(edit);
+  },
+
+  editDraft(raw, edit) {
+    const { body, fields } = editBody(raw as GooglePerson, edit);
+    const out: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+    for (const f of fields) out[f] = body[f];
+    return out;
+  },
+
+  setDraftPhoto(raw, jpegBase64) {
+    const out: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+    if (jpegBase64) out.photos = [{ url: `data:image/jpeg;base64,${jpegBase64}` }];
+    else delete out.photos;
+    return out;
+  },
+
+  setDraftGroups(raw, groupIds) {
+    return { ...(raw as Record<string, unknown>), memberships: groupIds.map((g) => ({ contactGroupMembership: { contactGroupResourceName: g } })) };
   },
 
   async snapshot(ctx, providerContactId) {

@@ -821,3 +821,15 @@ nav[aria-label="Lists"] .nav-row { padding-left: calc(var(--depth, 0) * 14px); }
   font-size: 13px; font-weight: 500; white-space: nowrap;
 }
 .nav-item.people-drop { box-shadow: inset 0 0 0 2px var(--accent); background: var(--nav-selected); }
+
+/* Drafts: only in Ligature */
+.draft-tag {
+  flex: none; margin-left: 6px; padding: 0 6px; border: 1px dashed var(--accent); border-radius: 9px;
+  color: var(--accent); font-size: 11px; font-weight: 500; line-height: 16px;
+}
+.grid tr.is-draft .mini-av { outline: 1.5px dashed var(--accent); outline-offset: 1px; }
+.grid tr.is-draft .cell-name { font-style: italic; }
+.draft-banner { display: flex; align-items: center; gap: 12px; justify-content: space-between; border: 1px dashed var(--accent); }
+.draft-banner .btn { flex: none; }
+.grid tbody tr.open .draft-tag { color: inherit; border-color: currentColor; }
+.grid tbody tr.is-draft.open .mini-av { outline-color: var(--accent-text); }

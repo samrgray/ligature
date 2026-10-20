@@ -37,7 +37,11 @@ export const onRequestPost: PagesFunction<Env, string, Data> = async ({ request,
   }
 
   const removed: string[] = [];
-  for (const [accountId, list] of byAccount) {
+  for (const [accountId, all] of byAccount) {
+    // Drafts are only in Ligature: nothing to delete in Google.
+    removed.push(...all.filter((r) => r.draft).map((r) => r.id));
+    const list = all.filter((r) => !r.draft);
+    if (!list.length) continue;
     const account = await env.DB.prepare('SELECT * FROM accounts WHERE id = ?1 AND user_id = ?2').bind(accountId, user.id).first<AccountRow>();
     if (!account) continue;
     const result = await provider(account.provider).deleteContacts({ env, db: env.DB, account }, list.map(cached));

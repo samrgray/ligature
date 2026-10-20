@@ -206,6 +206,7 @@ function renderShell() {
         <div class="main-bar">
           <button type="button" class="icon-btn sidebar-btn" id="sidebar-btn" data-action="toggle-sidebar" aria-controls="sidebar">${ICON.sidebar}</button>
           <div class="title-block"><h1 id="view-title">All Contacts</h1><span class="count" id="list-count"></span>
+            <label class="sub-toggle" id="drafts-toggle" hidden title="Show drafts (only in Ligature, not in Google Contacts)"><input type="checkbox" data-drafts-toggle> Drafts</label>
             <label class="sub-toggle" id="sub-toggle" hidden title="Also show people in this list’s sublists"><input type="checkbox" data-sub-toggle> Include sublists</label></div>
           <label class="photo-zoom" title="Photo size">
             <svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6" r="3" fill="currentColor"/><path d="M2.5 15a5.5 5.5 0 0 1 11 0" fill="currentColor"/></svg>
@@ -515,6 +516,7 @@ function matchingContacts() {
     (inArchive() ? S.archived : S.contacts).filter((c) => {
       if (f.type === 'account' && c.accountId !== f.id) return false;
       if (f.type === 'group' && (c.accountId !== f.accountId || !viewGroups.some((g) => c.groups.includes(g)))) return false;
+      if (c.draft && S.hideDrafts) return false;
       if (q && !q.split(/\s+/).every((w) => c.search.includes(w))) return false;
       return true;
     }),
@@ -793,6 +795,7 @@ function loadPrefs() {
   S.sort = v.sort && known.has(v.sort.id) ? { id: v.sort.id, dir: v.sort.dir === 'desc' ? 'desc' : 'asc' } : { id: 'name', dir: 'asc' };
   S.nameSort = v.nameSort === 'first' ? 'first' : 'last';
   S.withSub = views[key]?.withSub === true; // off unless you’ve turned it on for this list
+  S.hideDrafts = views[key]?.hideDrafts === true; // drafts show unless you hide them here
   S.prefsView = key;
 }
 
@@ -814,6 +817,7 @@ function savePrefs() {
       sort: S.sort,
       nameSort: S.nameSort,
       ...(S.withSub ? { withSub: true } : {}),
+      ...(S.hideDrafts ? { hideDrafts: true } : {}),
     },
   };
   clearTimeout(prefsTimer);
@@ -994,6 +998,16 @@ function renderGrid() {
   const cols = activeColumns();
   $('#view-title').textContent = viewTitle();
   $('#list-count').textContent = `${items.length} ${items.length === 1 ? 'contact' : 'contacts'}`;
+  const dt = $('#drafts-toggle');
+  if (dt) {
+    // Shown wherever this view has drafts (hidden or not).
+    const was = S.hideDrafts;
+    S.hideDrafts = false;
+    const any = matchingContacts().some((c) => c.draft);
+    S.hideDrafts = was;
+    dt.hidden = !any;
+    dt.querySelector('input').checked = !S.hideDrafts;
+  }
   const sub = $('#sub-toggle');
   const hasSubs = S.filter.type === 'group' && descendantsOf(S.filter.accountId, S.filter.id).length > 0;
   if (sub) {
@@ -1053,7 +1067,9 @@ function gridRow(c, j, members, i, cols) {
         if (j > 0) return '';
         const name = together ? togetherName(members) : v;
         const avs = together ? `<span class="av-stack">${members.slice(0, 3).map(av).join('')}</span>` : av(c);
-        return `<td class="c-name"${span} data-ids="${h(ids.join(' '))}"${together ? ` title="${h(name)}"` : ''}><button type="button" class="cell-open" data-open="${h(c.id)}" draggable="${inArchive() ? 'false' : 'true'}">${avs}<span class="cell-name">${h(name)}</span></button></td>`;
+        return `<td class="c-name"${span} data-ids="${h(ids.join(' '))}"${together ? ` title="${h(name)}"` : ''}><button type="button" class="cell-open" data-open="${h(c.id)}" draggable="${inArchive() ? 'false' : 'true'}">${avs}<span class="cell-name">${h(name)}</span>${
+          members.some((m) => m.draft) ? '<span class="draft-tag" title="Only in Ligature, not in Google Contacts">Draft</span>' : ''
+        }</button></td>`;
       }
       const tip = together ? `${c.displayName || 'No name'}: ${v}` : v;
       const title = (together && v) || v.length > 20 ? ` title="${h(tip)}"` : '';
@@ -1068,7 +1084,7 @@ function gridRow(c, j, members, i, cols) {
       return `<td class="${col.nums ? 'nums' : ''}"${title}>${inner}</td>`;
     })
     .join('');
-  const cls = [i % 2 ? 'alt' : '', open ? 'open' : '', S.selected.has(c.id) ? 'checked' : '', together ? 'grp' : '', together && j === members.length - 1 ? 'grp-last' : '']
+  const cls = [i % 2 ? 'alt' : '', open ? 'open' : '', c.draft ? 'is-draft' : '', S.selected.has(c.id) ? 'checked' : '', together ? 'grp' : '', together && j === members.length - 1 ? 'grp-last' : '']
     .filter(Boolean)
     .join(' ');
   const label = together ? togetherName(members) : c.displayName || 'contact';
@@ -2023,10 +2039,16 @@ function renderDetail() {
     <div class="detail-body"><div class="sheet">
       ${
         d.archived
-          ? `<div class="banner archived-banner">Archived ${h(shortDate(d.archived.at))}. Not in Google Contacts; everything is kept here. Restore puts ${h(c.givenName || 'them')} back in Google${
+          ? d.draft
+            ? `<div class="banner archived-banner">Archived draft, ${h(shortDate(d.archived.at))}. Restore brings it back as a draft.</div>`
+            : `<div class="banner archived-banner">Archived ${h(shortDate(d.archived.at))}. Not in Google Contacts; everything is kept here. Restore puts ${h(c.givenName || 'them')} back in Google${
               d.archived.groups.filter((g) => g !== 'contactGroups/myContacts').length ? ', on the same lists' : ''
             }.</div>`
-          : togetherSwitcher(d.id)
+          : `${togetherSwitcher(d.id)}${
+              d.draft
+                ? `<div class="banner draft-banner"><span><strong>Draft.</strong> Only in Ligature: not in Google Contacts, so not on your iPhone or Mac.</span><button type="button" class="btn primary" data-action="promote-contact">Add to Google</button></div>`
+                : ''
+            }`
       }
       <div class="hero">
         ${
@@ -2472,6 +2494,7 @@ function renderEditor(el) {
         <h2 class="drawer-title">${isNew ? 'New Contact' : 'Edit Contact'}</h2>
         <span class="grow"></span>
         <button type="button" class="btn" data-action="cancel-edit">Cancel</button>
+        ${isNew ? '<button type="button" class="btn" data-action="save-draft" title="Keep it only in Ligature for now">Save as Draft</button>' : ''}
         <button type="submit" class="btn primary" id="save-btn">${isNew ? 'Create' : 'Save'}</button>
       </div>
       <div class="detail-body"><div class="sheet form">
@@ -2480,8 +2503,10 @@ function renderEditor(el) {
             ? `Creates the contact in Google${
                 draft.groups.length ? `, in “${h(accountById(draft.accountId)?.groups.find((g) => g.id === draft.groups[0])?.name ?? 'this list')}”` : ''
               }. It reaches your iPhone and Mac through Google.`
-            : 'Changes save to Google and reach your iPhone and Mac.'
-        }</div>
+            : S.detail?.draft
+              ? 'A draft: changes stay in Ligature until you add it to Google.'
+              : 'Changes save to Google and reach your iPhone and Mac.'
+        }${isNew ? ' Or save it as a draft, kept only in Ligature until you add it to Google.' : ''}</div>
         ${
           isNew && accounts.length > 1
             ? `<label class="f">Account<select class="input" data-draft="accountId">${accounts
@@ -2592,7 +2617,8 @@ async function saveEditor() {
   if (btn) btn.disabled = true;
   try {
     if (S.mode === 'new') {
-      let d = await api('/contacts', { method: 'POST', body: { accountId: draft.accountId, edit: editsFromDraft() } });
+      const asDraft = !!draft.asDraft;
+      let d = await api('/contacts', { method: 'POST', body: { accountId: draft.accountId, edit: editsFromDraft(), draft: asDraft } });
       let photoError = '';
       d = (await savePhoto(d.id, d.etag).catch((e) => ((photoError = e.message), null))) ?? d;
       S.mode = 'view';
@@ -2600,7 +2626,8 @@ async function saveEditor() {
       S.selectedId = d.id;
       await loadContacts();
       markOpen();
-      toast(photoError ? `Contact created in Google, but the photo didn’t save: ${photoError}` : 'Contact created in Google.', photoError ? 7000 : 4000);
+      const what = asDraft ? 'Draft saved. It’s only in Ligature' : 'Contact created in Google';
+      toast(photoError ? `${what}, but the photo didn’t save: ${photoError}` : `${what}.`, photoError ? 7000 : 4000);
     } else {
       const edit = editsFromDraft();
       if (!Object.keys(edit).length && !draft.photo) {
@@ -2616,11 +2643,12 @@ async function saveEditor() {
       S.mode = 'view';
       S.detail = d;
       await loadContacts();
-      toast('Saved to Google.');
+      toast(d.draft ? 'Saved.' : 'Saved to Google.');
     }
     draft = null;
     renderDetail();
   } catch (e) {
+    if (draft) draft.asDraft = false;
     if (e.code === 'conflict' && e.data?.contact) {
       S.mode = 'view';
       S.detail = e.data.contact;
@@ -2630,6 +2658,23 @@ async function saveEditor() {
       loadContacts();
       return;
     }
+    if (btn) btn.disabled = false;
+    handleError(e);
+  }
+}
+
+/** Make a draft real: create it in Google, with its photo and lists. */
+async function promoteDraft() {
+  const d = S.detail;
+  if (!d?.draft) return;
+  const btn = $('[data-action="promote-contact"]');
+  if (btn) btn.disabled = true;
+  try {
+    S.detail = await api(`/contacts/${encodeURIComponent(d.id)}/promote`, { method: 'POST' });
+    await loadContacts();
+    renderDetail();
+    toast(`Added ${d.card.givenName || d.card.displayName || 'them'} to Google Contacts.`, 4000);
+  } catch (e) {
     if (btn) btn.disabled = false;
     handleError(e);
   }
@@ -3808,6 +3853,12 @@ document.addEventListener('click', async (e) => {
       return openRelDialog();
     case 'shortcuts':
       return openShortcuts();
+    case 'save-draft':
+      if (!draft) return;
+      draft.asDraft = true;
+      return saveEditor();
+    case 'promote-contact':
+      return promoteDraft();
     case 'add-to-list':
       return openAddToList();
     case 'signal-name':
@@ -4226,6 +4277,13 @@ document.addEventListener('change', async (e) => {
     } catch (err) {
       handleError(err);
     }
+  }
+  if (t.matches?.('[data-drafts-toggle]')) {
+    S.hideDrafts = !t.checked;
+    savePrefs();
+    clearSelection();
+    renderGrid();
+    return;
   }
   if (t.matches?.('[data-sub-toggle]')) {
     S.withSub = t.checked;

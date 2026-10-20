@@ -72,6 +72,8 @@ export async function contactPayload(db: D1Database, user: UserRow, row: Contact
     id: row.id,
     etag: row.etag,
     archived,
+    // Only in Ligature, not in Google (until it’s added).
+    draft: Boolean(row.draft),
     card,
     fields,
     search: searchText(card, fields, await fieldDefsFor(db, user.id), account.id),

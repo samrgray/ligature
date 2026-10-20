@@ -200,6 +200,10 @@ const MIGRATIONS: string[][] = [
     `ALTER TABLE field_defs ADD COLUMN list_id TEXT`,
     `ALTER TABLE field_defs ADD COLUMN list_name TEXT`,
   ],
+  [
+    // Drafts: contacts only in Ligature, not (yet) in Google. Their provider ID is "draft:<id>".
+    `ALTER TABLE contacts ADD COLUMN draft INTEGER NOT NULL DEFAULT 0`,
+  ],
 ];
 
 let ready: Promise<void> | null = null;

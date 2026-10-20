@@ -60,6 +60,11 @@ export interface Provider {
   snapshot(ctx: ProviderCtx, providerContactId: string): Promise<{ raw: unknown; photo: string | null }>;
   /** Recreate an archived contact, on the lists in `groupIds` that still exist. */
   restore(ctx: ProviderCtx, raw: unknown, photo: string | null, linkId: string, groupIds: string[]): Promise<ProviderContact>;
+  /** A draft: a contact in the provider’s shape that only Ligature has (until it’s made real with `restore`). */
+  draftRaw(edit: CardEdit): unknown;
+  editDraft(raw: unknown, edit: CardEdit): unknown;
+  setDraftPhoto(raw: unknown, jpegBase64: string | null): unknown;
+  setDraftGroups(raw: unknown, groupIds: string[]): unknown;
   /** Fresh copies of several contacts (ones not found are left out). */
   getMany(ctx: ProviderCtx, providerContactIds: string[]): Promise<ProviderContact[]>;
 
