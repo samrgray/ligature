@@ -2526,6 +2526,12 @@ function renderEditor(el) {
         ${addressGroup()}
         ${multiGroup('urls', 'Websites', URL_LABELS)}
         <label class="f">Notes<textarea class="input" data-draft="notes">${h(draft.notes)}</textarea></label>
+        ${
+          isNew || S.detail?.draft
+            ? ''
+            : `<div class="make-draft"><button type="button" class="btn" data-action="make-draft">Make Draft…</button>
+                <p>Takes them out of Google Contacts (and your iPhone and Mac), keeping everything here as a draft. Add them back to Google anytime.</p></div>`
+        }
         ${isNew ? '' : '<div class="danger-zone"><button type="button" class="btn danger" data-action="delete-contact">Delete Contact…</button></div>'}
       </div></div>
     </form>`;
@@ -2659,6 +2665,30 @@ async function saveEditor() {
       return;
     }
     if (btn) btn.disabled = false;
+    handleError(e);
+  }
+}
+
+/** Turn a real contact into a draft: kept here, taken out of Google. Offered while editing. */
+async function makeDraft() {
+  const d = S.detail;
+  if (!d || d.draft) return;
+  const name = d.card.displayName || 'this contact';
+  const ok = await confirmDialog({
+    title: `Make ${name} a draft?`,
+    body: 'They’re deleted from Google Contacts, so they leave your iPhone and Mac. Everything (details, photo, lists, your fields) stays here as a draft, and you can add them back to Google anytime. Unsaved edits are discarded.',
+    action: 'Make Draft',
+  });
+  if (!ok) return;
+  try {
+    const next = await api(`/contacts/${encodeURIComponent(d.id)}/demote`, { method: 'POST', body: { etag: d.etag } });
+    draft = null;
+    S.mode = 'view';
+    S.detail = next;
+    await loadContacts();
+    renderDetail();
+    toast(`${name} is now a draft, only in Ligature.`, 4000);
+  } catch (e) {
     handleError(e);
   }
 }
@@ -3859,6 +3889,8 @@ document.addEventListener('click', async (e) => {
       return saveEditor();
     case 'promote-contact':
       return promoteDraft();
+    case 'make-draft':
+      return makeDraft();
     case 'add-to-list':
       return openAddToList();
     case 'signal-name':

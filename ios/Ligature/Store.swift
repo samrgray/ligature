@@ -225,6 +225,18 @@ final class Store {
         return d
     }
 
+    /// Turn a real contact into a draft: kept in Ligature, deleted from Google.
+    func makeDraft(_ id: String, etag: String?) async throws {
+        if demo {
+            if let i = contacts.firstIndex(where: { $0.id == id }) { contacts[i].draft = true }
+            details[id]?.draft = true
+            return
+        }
+        let d: ContactDetail = try await api.post("/contacts/\(id)/demote", ["etag": etag ?? ""])
+        apply(d)
+        await refreshContacts()
+    }
+
     /// Make a draft real: create it in Google, with its photo and lists.
     func promote(_ id: String) async throws {
         if demo {
