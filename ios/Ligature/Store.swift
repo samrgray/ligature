@@ -216,13 +216,26 @@ final class Store {
         }
     }
 
-    func create(accountId: String, edit: [String: Any]) async throws -> ContactDetail {
+    func create(accountId: String, edit: [String: Any], draft: Bool = false) async throws -> ContactDetail {
         if demo { return demoCreate(edit) }
-        let d: ContactDetail = try await api.post("/contacts", ["accountId": accountId, "edit": edit])
+        let d: ContactDetail = try await api.post("/contacts", ["accountId": accountId, "edit": edit, "draft": draft])
         apply(d)
         await refreshContacts()
         syncSoon()
         return d
+    }
+
+    /// Make a draft real: create it in Google, with its photo and lists.
+    func promote(_ id: String) async throws {
+        if demo {
+            if let i = contacts.firstIndex(where: { $0.id == id }) { contacts[i].draft = nil }
+            details[id]?.draft = nil
+            return
+        }
+        let d: ContactDetail = try await api.post("/contacts/\(id)/promote", [String: String]())
+        apply(d)
+        await refreshContacts()
+        syncSoon()
     }
 
     func setPhoto(_ id: String, etag: String?, jpeg: Data) async throws {
@@ -781,6 +794,7 @@ final class Store {
             r.photoUrl = d.card.photoUrl
             r.groups = d.card.groups
             r.fields = d.fields
+            r.draft = d.draft
             if let search = d.search { r.search = search }
             contacts[i] = r
         }

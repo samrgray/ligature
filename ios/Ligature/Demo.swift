@@ -59,7 +59,7 @@ extension Store {
             return ContactRow(
                 id: "demo-\(i)", accountId: "demo", givenName: first, familyName: last, displayName: "\(first) \(last)",
                 organization: org, title: title, email: email, phone: phone, photoUrl: "",
-                search: "\(first) \(last) \(org) \(email) \(phone)".lowercased(), groups: groups, fields: fields
+                search: "\(first) \(last) \(org) \(email) \(phone)".lowercased(), groups: groups, fields: fields, draft: i == 4 ? true : nil
             )
         }
         for c in contacts { details[c.id] = demoDetail(c) }
@@ -97,7 +97,7 @@ extension Store {
                                       value: "466 Quarry Bend Rd\nPortland, OR 97214")],
             relations: [], events: [], birthday: "September 19, 1986", notes: "Kids go to Lincoln.", photoUrl: "", groups: c.groups
         )
-        return ContactDetail(id: c.id, etag: "demo", card: card, fields: c.fields, account: AccountRef(id: "demo", providerName: "Google"))
+        return ContactDetail(id: c.id, etag: "demo", draft: c.draft, card: card, fields: c.fields, account: AccountRef(id: "demo", providerName: "Google"))
     }
 
     func demoEdit(_ id: String, _ edit: [String: Any]) -> ContactDetail {

@@ -25,6 +25,7 @@ struct ContactDetailView: View {
     var body: some View {
         ScrollViewReader { proxy in
         List {
+            if detail?.draft == true && archived == nil { draftBanner }
             header
             if let d = detail {
                 googleSections(d)
@@ -128,6 +129,41 @@ struct ContactDetailView: View {
 
     private func close() {
         if let onClose { onClose() } else { dismiss() }
+    }
+
+    @State private var promoting = false
+    @State private var promoteError: String?
+
+    /// Drafts are only in Ligature; one tap makes them real.
+    private var draftBanner: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    DraftTag()
+                    Text("Only in Ligature").font(.subheadline.weight(.medium))
+                }
+                Text("Not in Google Contacts, so not on your iPhone or Mac.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button {
+                    promoting = true
+                    Task {
+                        do { try await store.promote(id) } catch { promoteError = error.localizedDescription }
+                        promoting = false
+                    }
+                } label: {
+                    if promoting { ProgressView().frame(maxWidth: .infinity) } else { Text("Add to Google").frame(maxWidth: .infinity) }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(promoting)
+            }
+            .padding(.vertical, 4)
+        }
+        .alert("Couldn’t Add to Google", isPresented: Binding(get: { promoteError != nil }, set: { if !$0 { promoteError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(promoteError ?? "")
+        }
     }
 
     // MARK: Header: photo, name, and message / call / email

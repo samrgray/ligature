@@ -13,6 +13,33 @@ struct ContactsListView: View {
     /// Lists you’ve chosen to show with their sublists’ people (off by default), as “account|list” lines.
     @AppStorage("withSublists") private var withSublists = ""
 
+    /// Views where you’ve hidden drafts (they show by default), as lines: “all” or “account|list”.
+    @AppStorage("hiddenDrafts") private var hiddenDrafts = ""
+
+    private func viewKey(_ f: ListFilter) -> String {
+        if case let .list(accountId, id) = f { return "\(accountId)|\(id)" }
+        return "all"
+    }
+
+    private func hidesDrafts(_ f: ListFilter) -> Bool {
+        hiddenDrafts.split(separator: "\n").contains { $0 == viewKey(f) }
+    }
+
+    private func setHidesDrafts(_ f: ListFilter, _ hide: Bool) {
+        var keys = hiddenDrafts.split(separator: "\n").map(String.init).filter { $0 != viewKey(f) }
+        if hide { keys.append(viewKey(f)) }
+        hiddenDrafts = keys.joined(separator: "\n")
+    }
+
+    /// Whether this view has drafts at all (shown or hidden).
+    private func hasDrafts(_ f: ListFilter) -> Bool {
+        store.contacts.contains { c in
+            guard c.isDraft else { return false }
+            if case let .list(accountId, id) = f { return c.accountId == accountId && c.groups.contains(id) }
+            return true
+        }
+    }
+
     private func includesSublists(_ f: ListFilter) -> Bool {
         guard case let .list(accountId, id) = f else { return false }
         return withSublists.split(separator: "\n").contains { $0 == "\(accountId)|\(id)" }
@@ -115,6 +142,7 @@ struct ContactsListView: View {
             let ids = [id] + (includesSublists(filter) ? store.descendants(of: ListRef(accountId: accountId, id: id)) : [])
             items = items.filter { c in c.accountId == accountId && ids.contains { c.groups.contains($0) } }
         }
+        if hidesDrafts(filter) { items = items.filter { !$0.isDraft } }
         let terms = query.lowercased().split(separator: " ").map(String.init)
         if !terms.isEmpty {
             items = items.filter { c in terms.allSatisfy { c.search.contains($0) } }
@@ -518,6 +546,9 @@ struct ContactsListView: View {
                     }
                 }
             }
+            if hasDrafts(filter) {
+                Toggle("Show Drafts", isOn: Binding(get: { !hidesDrafts(filter) }, set: { setHidesDrafts(filter, !$0) }))
+            }
             if case let .list(accountId, id) = filter, !store.descendants(of: ListRef(accountId: accountId, id: id)).isEmpty {
                 Toggle("Include Sublists", isOn: Binding(
                     get: { includesSublists(filter) },
@@ -732,6 +763,20 @@ struct TogetherRowView: View {
     }
 }
 
+/// Marks a contact that’s only in Ligature.
+struct DraftTag: View {
+    var body: some View {
+        Text("Draft")
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .overlay(Capsule().strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+            .accessibilityLabel("Draft, only in Ligature")
+            .accessibilityIdentifier("draft-tag")
+    }
+}
+
 struct ContactRowView: View {
     let contact: ContactRow
     let sortByFirst: Bool
@@ -739,8 +784,16 @@ struct ContactRowView: View {
     var body: some View {
         HStack(spacing: 12) {
             Avatar(url: contact.photoUrl, initials: contact.initials, size: 36)
+                .overlay {
+                    if contact.isDraft {
+                        Circle().strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2.5])).padding(-3)
+                    }
+                }
             VStack(alignment: .leading, spacing: 1) {
-                name
+                HStack(spacing: 6) {
+                    name.italic(contact.isDraft)
+                    if contact.isDraft { DraftTag() }
+                }
                 if !contact.organization.isEmpty, !contact.givenName.isEmpty || !contact.familyName.isEmpty {
                     Text(contact.organization)
                         .font(.subheadline)

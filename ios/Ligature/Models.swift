@@ -132,6 +132,9 @@ struct ContactRow: Codable, Identifiable, Hashable {
     var search: String
     var groups: [String]
     var fields: [String: String]
+    /// Only in Ligature, not (yet) in Google.
+    var draft: Bool? = nil
+    var isDraft: Bool { draft == true }
 }
 
 /// Everything a message template can use about one person.
@@ -247,6 +250,8 @@ struct ContactDetail: Codable, Hashable {
     var etag: String?
     /// Set when the contact is archived: out of Google, kept in Ligature.
     var archived: Archived?
+    /// Only in Ligature, not (yet) in Google.
+    var draft: Bool? = nil
     var card: Card
     var fields: [String: String]
     /// Everything search looks through, so an edit is findable straight away.

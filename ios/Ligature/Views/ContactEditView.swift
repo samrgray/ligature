@@ -25,6 +25,7 @@ struct ContactEditView: View {
     @State private var urls: [Labeled] = []
     @State private var addresses: [PostalAddress] = []
     @State private var notes = ""
+    @State private var asDraft = false
 
     @State private var pickerItem: PhotosPickerItem?
     @State private var newPhoto: (jpeg: Data, image: UIImage)?
@@ -68,6 +69,13 @@ struct ContactEditView: View {
                 multiSection("website", items: $urls, labels: Self.urlLabels, keyboard: .URL)
                 Section("Notes") {
                     TextField("Notes", text: $notes, axis: .vertical).lineLimit(3...12)
+                }
+                if original == nil {
+                    Section {
+                        Toggle("Save as Draft", isOn: $asDraft)
+                    } footer: {
+                        Text("A draft stays only in Ligature, not in Google Contacts, until you add it to Google from its card.")
+                    }
                 }
                 if let d = original {
                     Section {
@@ -314,7 +322,7 @@ struct ContactEditView: View {
                 guard let accountId = list?.accountId ?? store.accounts.first?.id else { return }
                 var edit = edit
                 if let list { edit["groups"] = [list.id] }
-                let d = try await store.create(accountId: accountId, edit: edit)
+                let d = try await store.create(accountId: accountId, edit: edit, draft: asDraft)
                 if let p = newPhoto { try await store.setPhoto(d.id, etag: d.etag, jpeg: p.jpeg) }
             case let .edit(d):
                 var etag = d.etag

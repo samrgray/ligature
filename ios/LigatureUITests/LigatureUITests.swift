@@ -83,6 +83,21 @@ final class LigatureUITests: XCTestCase {
         XCTAssertTrue(app.cells.firstMatch.exists, "the list didn’t come back")
     }
 
+    func testDraftAddsToGoogle() {
+        app.terminate()
+        app.launchArguments = ["-demo", "-nopins"]
+        app.launch()
+        XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
+        let draftRow = app.cells.containing(.any, identifier: "draft-tag").firstMatch
+        XCTAssertTrue(draftRow.waitForExistence(timeout: 3), "no draft shown in the list")
+        draftRow.tap()
+        let add = app.buttons["Add to Google"]
+        XCTAssertTrue(add.waitForExistence(timeout: 3), "the draft has no Add to Google button")
+        shot("ui-draft")
+        add.tap()
+        XCTAssertFalse(add.waitForExistence(timeout: 2), "Add to Google didn’t make it real")
+    }
+
     func testSelectModeTicksPeople() {
         XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
         app.navigationBars.buttons["Select"].tap()
