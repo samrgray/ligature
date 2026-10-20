@@ -66,6 +66,23 @@ final class LigatureUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars.buttons["Edit"].exists, "a swipe left the contact")
     }
 
+    func testSwipeDownClosesCard() {
+        app.terminate()
+        app.launchArguments = ["-demo", "-nopins"]
+        app.launch()
+        XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
+        sleep(1)
+        app.cells.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars.buttons["Edit"].waitForExistence(timeout: 3))
+        sleep(1)
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
+        sleep(2)
+        shot("ui-swipe-down")
+        XCTAssertFalse(app.navigationBars.buttons["Edit"].exists, "swiping the card down didn’t close it")
+        XCTAssertTrue(app.cells.firstMatch.exists, "the list didn’t come back")
+    }
+
     func testSelectModeTicksPeople() {
         XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
         app.navigationBars.buttons["Select"].tap()
