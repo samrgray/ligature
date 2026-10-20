@@ -9,6 +9,7 @@ struct ContactsListView: View {
     @Environment(Store.self) private var store
     @Environment(\.openURL) private var openURL
     @AppStorage("sortByFirst") private var sortByFirst = false
+    @Namespace private var cardZoom
     /// Lists you’ve chosen to show with their sublists’ people (off by default), as “account|list” lines.
     @AppStorage("withSublists") private var withSublists = ""
 
@@ -229,7 +230,7 @@ struct ContactsListView: View {
             .toolbar(selecting ? .visible : .hidden, for: .bottomBar)
             .navigationDestination(for: String.self) { id in
                 // Swipe sideways between everyone in the list you came from.
-                PersonView(id: id, order: entries(visible).map { $0.members.map(\.id) })
+                PersonView(id: id, order: entries(visible).map { $0.members.map(\.id) }, zoom: cardZoom)
             }
         }
         .sheet(isPresented: $showNew) {
@@ -272,11 +273,15 @@ struct ContactsListView: View {
             ForEach(entries(items)) { e in
                 let c = e.lead
                 NavigationLink(value: e.id) {
-                    if e.members.count > 1 {
-                        TogetherRowView(members: e.members)
-                    } else {
-                        ContactRowView(contact: c, sortByFirst: sortByFirst)
+                    Group {
+                        if e.members.count > 1 {
+                            TogetherRowView(members: e.members)
+                        } else {
+                            ContactRowView(contact: c, sortByFirst: sortByFirst)
+                        }
                     }
+                    // The card grows out of this row, and shrinks back into it.
+                    .matchedTransitionSource(id: e.id, in: cardZoom)
                 }
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         // With tabs, a sideways swipe moves between lists instead.

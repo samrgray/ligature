@@ -12,9 +12,13 @@ struct PersonView: View {
     /// For people shown together: which of them each card shows.
     @State private var chosen: [String: String] = [:]
 
-    init(id: String, order: [[String]] = []) {
+    /// Where the cards grow from: the list’s rows. Swiping a card down shrinks it back into its row.
+    var zoom: Namespace.ID?
+
+    init(id: String, order: [[String]] = [], zoom: Namespace.ID? = nil) {
         self.id = id
         self.order = order
+        self.zoom = zoom
         let entry = order.first { $0.contains(id) }
         _position = State(initialValue: entry?.first ?? id)
         if let lead = entry?.first, lead != id { _chosen = State(initialValue: [lead: id]) }
@@ -35,13 +39,25 @@ struct PersonView: View {
             LazyHStack(spacing: Self.gap) {
                 ForEach(entries.compactMap(\.first), id: \.self) { lead in
                     ContactDetailView(id: chosen[lead] ?? lead, active: lead == current, onClose: { dismiss() })
+                        .contentMargins(.bottom, 40, for: .scrollContent)
                         .scrollContentBackground(.hidden)
                         .background(Color(.systemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color(.separator).opacity(0.5), lineWidth: 0.5))
-                        .shadow(color: .black.opacity(0.08), radius: 10, y: 2)
-                        .padding(.vertical, 8)
+                        // Rounded at the top; the bottom runs off the screen.
+                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous))
+                        .overlay(
+                            UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
+                                .stroke(Color(.separator).opacity(0.5), lineWidth: 0.5)
+                        )
+                        .shadow(color: .black.opacity(0.12), radius: 14, y: 4)
+                        .padding(.top, 8)
                         .containerRelativeFrame(.horizontal) { w, _ in w - Self.inset * 2 }
+                        // Like a hand of cards: the ones moving off tilt from the bottom and drop back.
+                        .scrollTransition(.interactive, axis: .horizontal) { content, phase in
+                            content
+                                .rotationEffect(.degrees(phase.value * 6), anchor: .bottom)
+                                .scaleEffect(1 - abs(phase.value) * 0.05, anchor: .bottom)
+                                .offset(y: abs(phase.value) * 24)
+                        }
                 }
             }
             .scrollTargetLayout()
@@ -50,8 +66,11 @@ struct PersonView: View {
         .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $position)
         .scrollIndicators(.hidden)
+        .scrollClipDisabled()
+        .ignoresSafeArea(edges: .bottom)
         .background(Color(.systemGray5).ignoresSafeArea())
         .sensoryFeedback(.selection, trigger: position)
+        .modifier(CardZoom(zoom: zoom, source: current))
         .toolbar {
             if members.count > 1 {
                 ToolbarItem(placement: .principal) {
@@ -64,6 +83,21 @@ struct PersonView: View {
                     .fixedSize()
                 }
             }
+        }
+    }
+}
+
+/// Grows the cards out of the tapped row; swiping a card down shrinks it back into the row of
+/// whoever it shows now.
+private struct CardZoom: ViewModifier {
+    let zoom: Namespace.ID?
+    let source: String
+
+    func body(content: Content) -> some View {
+        if let zoom {
+            content.navigationTransition(.zoom(sourceID: source, in: zoom))
+        } else {
+            content
         }
     }
 }
