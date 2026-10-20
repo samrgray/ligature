@@ -67,7 +67,13 @@ struct ContactsListView: View {
     @State private var stripOffset: CGFloat = 0
     @State private var stripViewport: CGFloat = 0
     @State private var stripContent: CGFloat = 0
-    @AppStorage("showMap") private var showMap = false
+    /// List, table or map.
+    @AppStorage("layout") private var layout = "list"
+    private var showMap: Bool {
+        get { layout == "map" }
+        nonmutating set { layout = newValue ? "map" : "list" }
+    }
+    private var showTable: Bool { layout == "table" }
     @State private var mapTypes: Set<String> = []
     @State private var mapSpot: MapSpot?
     @State private var addingPin = false
@@ -181,19 +187,17 @@ struct ContactsListView: View {
                         if tabs.count > 1 { tabStrip }
                         mapPage
                     }
-                } else if tabs.count > 1 {
-                    VStack(spacing: 0) {
-                        tabStrip
-                        // Swipe sideways anywhere on the list to move between tabs.
-                        TabView(selection: $filter) {
-                            ForEach(tabs, id: \.self) { t in
-                                page(t).tag(t)
-                            }
-                        }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
-                    }
                 } else {
-                    page(filter)
+                    VStack(spacing: 0) {
+                        if tabs.count > 1 { tabStrip }
+                        if showTable {
+                            ContactsTable(items: visible, filter: filter) { path.append($0) }
+                                .environment(\.cardZoomNamespace, cardZoom)
+                                .id(filter)
+                        } else {
+                            page(filter)
+                        }
+                    }
                 }
             }
             .environment(\.editMode, $editMode)
@@ -239,14 +243,22 @@ struct ContactsListView: View {
                 } else {
                     ToolbarItem(placement: .topBarLeading) { listsMenu }
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button { withAnimation { showMap.toggle() } } label: {
-                            Image(systemName: showMap ? "list.bullet" : "map")
+                        Menu {
+                            Picker("Layout", selection: Binding(get: { layout }, set: { v in withAnimation { layout = v } })) {
+                                Label("List", systemImage: "list.bullet").tag("list")
+                                Label("Table", systemImage: "tablecells").tag("table")
+                                Label("Map", systemImage: "map").tag("map")
+                            }
+                        } label: {
+                            Image(systemName: showMap ? "map" : showTable ? "tablecells" : "list.bullet")
                         }
-                        .accessibilityLabel(showMap ? "Show List" : "Show Map")
+                        .accessibilityLabel("Layout")
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Select") { withAnimation { editMode = .active } }
-                            .disabled(store.contacts.isEmpty)
+                    if !showTable {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Select") { withAnimation { editMode = .active } }
+                                .disabled(store.contacts.isEmpty)
+                        }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showNew = true } label: { Image(systemName: "plus") }
@@ -294,7 +306,6 @@ struct ContactsListView: View {
     /// One list of contacts: everyone, or one list.
     private func page(_ f: ListFilter) -> some View {
         let items = visible(for: f)
-        let paging = tabs.count > 1
         // Rows are only selectable in Select mode; otherwise iOS treats a tap as selecting the
         // row instead of opening the contact.
         return List(selection: selecting ? $selection : nil) {
@@ -313,7 +324,7 @@ struct ContactsListView: View {
                 }
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         // With tabs, a sideways swipe moves between lists instead.
-                        if !paging && e.members.count == 1 && !c.phone.isEmpty {
+                        if e.members.count == 1 && !c.phone.isEmpty {
                             Button { if let u = Links.tel(c.phone) { openURL(u) } } label: { Label("Call", systemImage: "phone.fill") }
                                 .tint(.green)
                             Button { if let u = Links.sms(c.phone) { openURL(u) } } label: { Label("Message", systemImage: "message.fill") }

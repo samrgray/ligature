@@ -29,6 +29,9 @@ final class Store {
     /// Lists shown as tabs above the contacts, in order.
     var pinned: [ListRef] = []
     var listParents: [ListParent] = []
+    /// The table’s setup per view, shared with the web (prefs.views), and the older single setup.
+    var viewPrefs: [String: ViewPrefs] = [:]
+    var legacyView = ViewPrefs()
     /// Your order for all lists (pinned ones are ordered by `pinned`).
     var listOrder: [ListRef] = []
     var syncing = false
@@ -175,6 +178,8 @@ final class Store {
             pinned = s.user?.prefs?.pinnedLists ?? []
             listOrder = s.user?.prefs?.listOrder ?? []
             listParents = s.user?.prefs?.listParents ?? []
+            viewPrefs = s.user?.prefs?.views ?? [:]
+            legacyView = ViewPrefs(columns: s.user?.prefs?.columns, sort: s.user?.prefs?.sort, nameSort: s.user?.prefs?.nameSort)
             let c: ContactsResponse = try await api.get("/contacts")
             contacts = c.contacts
             relationships = c.relationships ?? []
@@ -223,6 +228,19 @@ final class Store {
         await refreshContacts()
         syncSoon()
         return d
+    }
+
+    /// Save one view’s table setup (sort, say), keeping every other view’s as the web left it.
+    func saveViewPrefs(_ key: String, _ prefs: ViewPrefs) async {
+        viewPrefs[key] = prefs
+        if demo { return }
+        do {
+            let data = try JSONEncoder().encode(viewPrefs)
+            let obj = try JSONSerialization.jsonObject(with: data)
+            let _: Empty = try await api.patch("/prefs", ["set": ["views": obj]])
+        } catch {
+            handle(error)
+        }
     }
 
     /// Turn a real contact into a draft: kept in Ligature, deleted from Google.

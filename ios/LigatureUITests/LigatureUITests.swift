@@ -143,7 +143,8 @@ final class LigatureUITests: XCTestCase {
 
     func testMapShowsPeople() {
         XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
-        app.navigationBars.buttons["Show Map"].tap()
+        app.navigationBars.buttons["Layout"].tap()
+        app.buttons["Map"].tap()
         let status = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "on the map")).firstMatch
         XCTAssertTrue(status.waitForExistence(timeout: 5), "map didn’t show")
         sleep(4)
@@ -162,7 +163,8 @@ final class LigatureUITests: XCTestCase {
         sleep(2)
         shot("ui-map-pin")
         app.buttons["map-type-work"].tap()
-        app.navigationBars.buttons["Show List"].tap()
+        app.navigationBars.buttons["Layout"].tap()
+        app.buttons["List"].tap()
         XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 3), "list didn’t come back")
     }
 
@@ -188,10 +190,23 @@ final class LigatureUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No Archived Contacts"].waitForExistence(timeout: 3), "restore didn’t empty the archive")
     }
 
-    func testSwipeChangesTab() {
+    func testTableEditsFieldInline() {
+        app.terminate()
+        app.launchArguments = ["-demo", "-nopins"]
+        app.launch()
         XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 5))
-        app.cells.element(boundBy: 2).swipeLeft()
-        sleep(1)
-        shot("ui-after-swipe")
+        app.navigationBars.buttons["Layout"].tap()
+        app.buttons["Table"].tap()
+        let header = app.buttons["Company"]
+        XCTAssertTrue(header.waitForExistence(timeout: 3), "the table didn’t show")
+        shot("ui-table")
+        // A field cell turns into a text box in place.
+        let cell = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Follow up")).firstMatch
+        if cell.exists {
+            cell.tap()
+            XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 3) || app.datePickers.firstMatch.waitForExistence(timeout: 3), "the date cell didn’t open a picker")
+        }
+        app.navigationBars.buttons["Layout"].tap()
+        app.buttons["List"].tap()
     }
 }

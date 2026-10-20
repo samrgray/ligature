@@ -21,6 +21,39 @@ struct Prefs: Codable, Hashable {
     var pinnedLists: [ListRef]?
     var listOrder: [ListRef]?
     var listParents: [ListParent]?
+    /// The table’s setup for each view (All Contacts, each list…), shared with the web.
+    var views: [String: ViewPrefs]?
+    /// The setup from before views were separate: where a view you haven’t changed starts.
+    var columns: [ColumnPref]?
+    var sort: SortPref?
+    var nameSort: String?
+}
+
+struct ViewPrefs: Codable, Hashable {
+    var columns: [ColumnPref]?
+    var sort: SortPref?
+    var nameSort: String?
+    var withSub: Bool?
+    var hideDrafts: Bool?
+}
+
+struct ColumnPref: Codable, Hashable {
+    let id: String
+    var w: Double?
+}
+
+struct SortPref: Codable, Hashable {
+    var id: String
+    var dir: String
+}
+
+/// The first address, in parts, so the table can put the neighborhood before the city.
+struct AddressParts: Codable, Hashable {
+    let street: String
+    let city: String
+    let rest: String
+    let country: String
+    let hood: Bool
 }
 
 /** A list nested inside another (only in Ligature; Google’s labels stay flat). */
@@ -135,6 +168,12 @@ struct ContactRow: Codable, Identifiable, Hashable {
     /// Only in Ligature, not (yet) in Google.
     var draft: Bool? = nil
     var isDraft: Bool { draft == true }
+    // For the table.
+    var address: String? = nil
+    var addressParts: AddressParts? = nil
+    var birthday: String? = nil
+    var birthdayKey: String? = nil
+    var notes: String? = nil
 }
 
 /// Everything a message template can use about one person.
