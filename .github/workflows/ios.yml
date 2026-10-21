@@ -118,6 +118,7 @@ jobs:
           shoot signin -screen signin
           shoot list
           shoot list-nopins -nopins
+          shoot table -screen table
           shoot together -screen together
           shoot relate -screen relate
           WAIT=9 shoot map -screen map

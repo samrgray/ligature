@@ -323,7 +323,6 @@ struct ContactsListView: View {
                     .matchedTransitionSource(id: e.id, in: cardZoom)
                 }
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                        // With tabs, a sideways swipe moves between lists instead.
                         if e.members.count == 1 && !c.phone.isEmpty {
                             Button { if let u = Links.tel(c.phone) { openURL(u) } } label: { Label("Call", systemImage: "phone.fill") }
                                 .tint(.green)
@@ -720,7 +719,7 @@ struct ContactsListView: View {
 
     private func openDemoScreen() {
         // Demo runs start on the list unless they ask for the map.
-        if store.demo { showMap = ["map", "mapspot"].contains(store.demoScreen ?? "") }
+        if store.demo { layout = store.demoScreen == "table" ? "table" : ["map", "mapspot"].contains(store.demoScreen ?? "") ? "map" : "list" }
         guard store.demo, path.isEmpty, let screen = store.demoScreen else { return }
         let ava = store.contacts.first { $0.givenName == "Ava" }?.id ?? store.contacts.first?.id
         switch screen {
