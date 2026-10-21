@@ -1,0 +1,150 @@
+2026-10-21 02:01:43.698 A  Ligature[32459:17960] (Security) SecKeyCopyAttributes
+2026-10-21 02:01:43.698 A  Ligature[32459:17960] (Security) SecKeyCopyPublicBytes
+2026-10-21 02:01:43.698 Df Ligature[32459:17960] [com.apple.network:boringssl] boringssl_context_new_session_handler(1771) [C2:1][0x107bcca60] Asyncing for session update block
+2026-10-21 02:01:43.698 A  Ligature[32459:17960] (Security) SecKeyCopyPublicBytes
+2026-10-21 02:01:43.698 A  Ligature[32459:17960] (Security) SecKeyCopyAttributes
+2026-10-21 02:01:43.698 A  Ligature[32459:17960] (Security) SecKeyCopyPublicBytes
+2026-10-21 02:01:43.698 Df Ligature[32459:17960] [com.apple.network:boringssl] boringssl_context_new_session_handler(1771) [C2:1][0x107bcca60] Asyncing for session update block
+2026-10-21 02:01:43.698 Df Ligature[32459:17960] [com.apple.network:boringssl] nw_protocol_boringssl_signal_connected(895) [C2:1][0x107bcca60] TLS connected [server(0) version(0x0304) ciphersuite(TLS_AES_256_GCM_SHA384) group(0x11ec) signature_alg(0x0403) alpn(h3) resumed(0) offered_ticket(0) in_early_data(0) early_data_accepted(0) false_started(0) ocsp_received(0) sct_received(0) connect_time(58ms) flight_time(6ms) rtt(5ms) write_stalls(0) read_stalls(5) pake(0x0000)]
+2026-10-21 02:01:43.699 Df Ligature[32459:17960] [com.apple.network:connection] nw_flow_connected [C2 IPv4#e15758c7:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (tls)
+2026-10-21 02:01:43.699 Df Ligature[32459:17960] [com.apple.network:quic] quic_stream_create_inbound [C1.1.1.1:2] [-0105f813285d3339fd0137134c5dd039fddf1df5] creating inbound stream 3
+2026-10-21 02:01:43.699 Df Ligature[32459:17960] [com.apple.network:quic] quic_stream_create_inbound [C1.1.1.1:2] [-0105f813285d3339fd0137134c5dd039fddf1df5] creating inbound stream 7
+2026-10-21 02:01:43.700 Df Ligature[32459:17960] [com.apple.network:quic] quic_stream_create_inbound [C1.1.1.1:2] [-0105f813285d3339fd0137134c5dd039fddf1df5] creating inbound stream 11
+2026-10-21 02:01:43.700 Df Ligature[32459:17960] [com.apple.network:quic] quic_stream_create_inbound [C1.1.1.1:2] [-0105f813285d3339fd0137134c5dd039fddf1df5] creating inbound stream 15
+2026-10-21 02:01:43.702 Df Ligature[32459:17965] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-10-21 02:01:43.702 Df Ligature[32459:17965] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x104cd0800>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1440 (elapsed = 1), _expireHandler: (null)
+2026-10-21 02:01:43.702 Df Ligature[32459:17965] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x1047af4d0> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x104cd0800>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1440 (elapsed = 1))
+2026-10-21 02:01:43.702 Df Ligature[32459:17960] [com.apple.network:boringssl] boringssl_context_new_session_handler_block_invoke(1774) [C2:1][0x107bcca60] Returning from session update block
+2026-10-21 02:01:43.702 Df Ligature[32459:17965] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x1047af4d0> for task identifier: 1
+2026-10-21 02:01:43.703 Df Ligature[32459:17960] [com.apple.network:boringssl] boringssl_context_new_session_handler_block_invoke(1774) [C2:1][0x107bcca60] Returning from session update block
+2026-10-21 02:01:43.703 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x112a488d8 ID=0 Task <467D522B-2845-4DEB-B5F7-99B70D8518E3>.<1> sent request, body N 0
+2026-10-21 02:01:43.710 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x112a488d8 ID=0 Task <467D522B-2845-4DEB-B5F7-99B70D8518E3>.<1> received response, status 200 content U
+2026-10-21 02:01:43.710 A  Ligature[32459:17960] (Security) SecTrustEvaluateIfNecessary
+2026-10-21 02:01:43.710 Df Ligature[32459:17960] [com.apple.xpc:connection] [0x1127408c0] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-21 02:01:43.715 Df Ligature[32459:17960] [com.apple.xpc:connection] [0x1127408c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-21 02:01:43.715 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <467D522B-2845-4DEB-B5F7-99B70D8518E3>.<1> response ended
+2026-10-21 02:01:43.715 Df Ligature[32459:17960] [com.apple.network:connection] [C1] event: client:connection_idle @0.147s
+2026-10-21 02:01:43.716 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <467D522B-2845-4DEB-B5F7-99B70D8518E3>.<1> done using Connection 1
+2026-10-21 02:01:43.716 Df Ligature[32459:17965] [com.apple.CFNetwork:Summary] Task <467D522B-2845-4DEB-B5F7-99B70D8518E3>.<1> summary for task success {transaction_duration_ms=180, response_status=200, connection=1, protocol="h3", domain_lookup_duration_ms=5, connect_duration_ms=79, secure_connection_duration_ms=76, private_relay=false, request_start_ms=158, request_duration_ms=8, response_start_ms=173, response_duration_ms=7, request_bytes=133, request_throughput_kbps=119, response_bytes=3584, response_throughput_kbps=3931, cache_hit=false}
+2026-10-21 02:01:43.716 Df Ligature[32459:17965] [com.apple.CoreAnalytics:client] No XPC connection in Simulator
+2026-10-21 02:01:43.716 Df Ligature[32459:1795f] [com.apple.CFNetwork:Default] Task <467D522B-2845-4DEB-B5F7-99B70D8518E3>.<1> finished successfully
+2026-10-21 02:01:43.809 A  Ligature[32459:1795f] (RunningBoardServices) didChangeInheritances
+2026-10-21 02:01:43.837 Df Ligature[32459:17952] [com.apple.xpc:connection] [0x112bfc000] activating connection: mach=true listener=false peer=false name=com.apple.IOSurface.Remote
+2026-10-21 02:01:43.889 A  Ligature[32459:17965] (RunningBoardServices) didChangeInheritances
+2026-10-21 02:01:43.889 Df Ligature[32459:17952] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:1 [18F61073-EBE5-43FF-B632-ACAC385ADCE1] (reporting strategy default)>
+2026-10-21 02:01:43.889 Df Ligature[32459:17952] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:2 [5D0DE7D0-F57B-4289-81DC-BC84F9E26BEC] (reporting strategy default)>
+2026-10-21 02:01:43.889 Df Ligature[32459:17952] [com.apple.network:activity] Set activity <nw_activity 50:1 [18F61073-EBE5-43FF-B632-ACAC385ADCE1] (reporting strategy default)> as the global parent
+2026-10-21 02:01:43.893 A  Ligature[32459:17965] (RunningBoardServices) didChangeInheritances
+2026-10-21 02:01:43.897 Df Ligature[32459:17952] [com.apple.UIKit:EventDeferring] [0x104e810a0] Scene target of event deferring environments did update: scene: 0x1047bb240; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-10-21 02:01:43.898 Df Ligature[32459:17952] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x1047bb240; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.samrgray.ligature-default
+2026-10-21 02:01:43.898 Df Ligature[32459:17952] [com.apple.Accessibility:AXCommon] Read Per-App on Init: Smart invert = (null)
+2026-10-21 02:01:43.898 A  Ligature[32459:17952] (CoreLocation) CL: CLLocationManager
+2026-10-21 02:01:43.898 Df Ligature[32459:17952] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":onClientEventRegistration:, "self":"0x104e3a640", "clientKey":icom.samrgray.ligature:}
+2026-10-21 02:01:43.898 Df Ligature[32459:17952] [com.apple.locationd.Core:Client] {"msg":"#CLLocationManager invoking #delegate", "self":"0x104e3a640", "delegate":"0x11257a900", "selector":locationManagerDidChangeAuthorization:, "authorizationStatus":0, "limitsPrecision":0, "isAuthorizedForWidgetUpdates":0}
+2026-10-21 02:01:43.898 A  Ligature[32459:17952] (CoreLocation) CL: CLLocationManager
+2026-10-21 02:01:43.898 Df Ligature[32459:17952] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":stopUpdatingLocation, "self":"0x104e3a640"}
+2026-10-21 02:01:43.898 A  Ligature[32459:17952] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-10-21 02:01:43.899 A  Ligature[32459:17952] (CoreLocation) CL: CLLocationManager
+2026-10-21 02:01:43.899 A  Ligature[32459:1795f] (LocationSupport) CL: CLConnection::sendMessage
+2026-10-21 02:01:43.899 Df Ligature[32459:17952] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":stopUpdatingHeading, "self":"0x104e3a640"}
+2026-10-21 02:01:43.899 Df Ligature[32459:17952] [com.apple.locationd.Core:Client] Stop updating heading
+2026-10-21 02:01:43.899 A  Ligature[32459:17952] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-10-21 02:01:43.899 Df Ligature[32459:17952] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-10-21 02:01:43.900 Df Ligature[32459:17952] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.samrgray.ligature-default  persistentID: 4AC600B6-1DCC-4585-9ED8-544C02CA6810
+2026-10-21 02:01:43.901 A  Ligature[32459:1795f] (LocationSupport) CL: CLConnection::sendMessage
+2026-10-21 02:01:43.901 Df Ligature[32459:17952] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 2, <UIWindowScene: 0x1047bb240> (4AC600B6-1DCC-4585-9ED8-544C02CA6810)
+2026-10-21 02:01:43.904 Df Ligature[32459:17952] [com.apple.FrontBoard:SceneExtension] Realizing settings extension SBUISecureRenderingSettingsExtension on FBSSceneSettings
+2026-10-21 02:01:43.904 Df Ligature[32459:17952] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 2, <UIWindowScene: 0x1047bb240> (4AC600B6-1DCC-4585-9ED8-544C02CA6810)
+2026-10-21 02:01:43.905 Df Ligature[32459:17952] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 2, <UIWindowScene: 0x1047bb240> (4AC600B6-1DCC-4585-9ED8-544C02CA6810)
+2026-10-21 02:01:43.906 Df Ligature[32459:17952] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.samrgray.ligature-default  persistentID: 4AC600B6-1DCC-4585-9ED8-544C02CA6810
+2026-10-21 02:01:43.906 Df Ligature[32459:17952] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4128 -> 32; animating application lifecycle event: 1
+2026-10-21 02:01:43.906 Df Ligature[32459:17952] [com.apple.KeyboardArbiter:Client] Send setDeactivating: N (-DeactivationReason:SuspendedEventsOnly)
+2026-10-21 02:01:43.939 Df Ligature[32459:17952] [com.apple.UIKit:Application] Deactivation reason removed: 5; deactivation reasons: 32 -> 0; animating application lifecycle event: 0
+2026-10-21 02:01:43.940 A  Ligature[32459:17952] (CoreLocation) CL: CLLocationManager
+2026-10-21 02:01:43.940 Df Ligature[32459:17952] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":onDidBecomeActive:, "self":"0x104e3a640", "notification":NSConcreteNotification 0x104facf80 {name = UIApplicationDidBecomeActiveNotification; object = <_TtC7SwiftUIP33_ACC2C5639A7D76F611E170E831FCA49118SwiftUIApplication: 0x1047a5670>}}
+2026-10-21 02:01:43.944 Df Ligature[32459:17952] [com.apple.KeyboardArbiter:Client] startConnection
+2026-10-21 02:01:43.946 Df Ligature[32459:17952] [com.apple.xpc:connection] [0x112950000] activating connection: mach=true listener=false peer=false name=com.apple.UIKit.KeyboardManagement.hosted
+2026-10-21 02:01:44.084 A  Ligature[32459:1795f] (RunningBoardServices) didChangeInheritances
+2026-10-21 02:01:44.092 Df Ligature[32459:17952] [com.apple.KeyboardArbiter:Client] handleKeyboardChange: set currentKeyboard:N (wasKeyboard:N)
+2026-10-21 02:01:44.114 Df Ligature[32459:17952] [com.apple.UIKit:KeyboardSceneDelegate] forceReloadInputViews
+2026-10-21 02:01:44.114 Df Ligature[32459:17952] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <(null): 0x0; > force:Y
+2026-10-21 02:01:44.115 Df Ligature[32459:17952] [com.apple.UIKit:KeyboardArbiterClientLog] isWritingToolsHandlingKeyboardTracking:Y (WT ready:Y, Arbiter ready:Y)
+2026-10-21 02:01:44.465 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.465 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.466 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.466 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.466 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.468 Df Ligature[32459:17961] [com.apple.network:connection] [C1] event: client:connection_reused @0.899s
+2026-10-21 02:01:44.468 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> now using Connection 1
+2026-10-21 02:01:44.468 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f016d8 ID=4 Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> sent request, body N 0
+2026-10-21 02:01:44.469 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> now using Connection 1
+2026-10-21 02:01:44.469 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.469 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.469 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.469 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> now using Connection 1
+2026-10-21 02:01:44.469 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> now using Connection 1
+2026-10-21 02:01:44.469 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> now using Connection 1
+2026-10-21 02:01:44.470 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> now using Connection 1
+2026-10-21 02:01:44.470 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> now using Connection 1
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> now using Connection 1
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f01f98 ID=8 Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> sent request, body N 0
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f024d8 ID=12 Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> sent request, body N 0
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f02a18 ID=16 Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> sent request, body N 0
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f02f58 ID=20 Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> sent request, body N 0
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f01dd8 ID=24 Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> sent request, body N 0
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f03658 ID=28 Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> sent request, body N 0
+2026-10-21 02:01:44.471 Df Ligature[32459:17961] [com.apple.cfnetwork:h3stream] 0x114f03b98 ID=32 Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> sent request, body N 0
+2026-10-21 02:01:44.474 Df Ligature[32459:17971] [com.apple.CFNetwork:Default] Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> resuming, timeouts(60.0, 30.0) qos(0x15) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-21 02:01:44.475 Df Ligature[32459:17965] [com.apple.CFNetwork:Default] Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> now using Connection 1
+2026-10-21 02:01:44.476 Df Ligature[32459:17965] [com.apple.cfnetwork:h3stream] 0x114f641d8 ID=36 Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> sent request, body N 0
+2026-10-21 02:01:44.483 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f024d8 ID=12 Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> received response, status 200 content U
+2026-10-21 02:01:44.484 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f016d8 ID=4 Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> received response, status 200 content U
+2026-10-21 02:01:44.487 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f02a18 ID=16 Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> received response, status 200 content U
+2026-10-21 02:01:44.488 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f01f98 ID=8 Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> received response, status 200 content U
+2026-10-21 02:01:44.489 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f02f58 ID=20 Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> received response, status 200 content U
+2026-10-21 02:01:44.492 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f03658 ID=28 Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> received response, status 200 content U
+2026-10-21 02:01:44.494 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f01dd8 ID=24 Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> received response, status 200 content U
+2026-10-21 02:01:44.495 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> response ended
+2026-10-21 02:01:44.495 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> done using Connection 1
+2026-10-21 02:01:44.495 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f03b98 ID=32 Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> received response, status 200 content U
+2026-10-21 02:01:44.496 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> response ended
+2026-10-21 02:01:44.496 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> done using Connection 1
+2026-10-21 02:01:44.496 Df Ligature[32459:17961] [com.apple.CFNetwork:Summary] Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> summary for task success {transaction_duration_ms=26, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=0, request_duration_ms=0, response_start_ms=24, response_duration_ms=1, request_bytes=154, request_throughput_kbps=1534, response_bytes=805, response_throughput_kbps=4065, cache_hit=false}
+2026-10-21 02:01:44.496 Df Ligature[32459:17961] [com.apple.CFNetwork:Summary] Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> summary for task success {transaction_duration_ms=27, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=1, request_duration_ms=0, response_start_ms=25, response_duration_ms=0, request_bytes=154, request_throughput_kbps=5051, response_bytes=806, response_throughput_kbps=12400, cache_hit=false}
+2026-10-21 02:01:44.498 Df Ligature[32459:17960] [com.apple.cfnetwork:h3stream] 0x114f641d8 ID=36 Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> received response, status 200 content U
+2026-10-21 02:01:44.498 Df Ligature[32459:17965] [com.apple.CFNetwork:Default] Task <FA03F255-0960-4734-9D08-BF091AB1AA2D>.<7> finished successfully
+2026-10-21 02:01:44.499 Df Ligature[32459:17965] [com.apple.CFNetwork:Default] Task <870C5F9B-3332-4181-9A2A-F4BD511C6B7D>.<9> finished successfully
+2026-10-21 02:01:44.501 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> response ended
+2026-10-21 02:01:44.501 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> done using Connection 1
+2026-10-21 02:01:44.501 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> response ended
+2026-10-21 02:01:44.501 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> done using Connection 1
+2026-10-21 02:01:44.501 Df Ligature[32459:17965] [com.apple.CFNetwork:Summary] Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> summary for task success {transaction_duration_ms=33, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=1, request_duration_ms=2, response_start_ms=16, response_duration_ms=17, request_bytes=154, request_throughput_kbps=590, response_bytes=56622, response_throughput_kbps=26162, cache_hit=false}
+2026-10-21 02:01:44.502 Df Ligature[32459:17965] [com.apple.CFNetwork:Summary] Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> summary for task success {transaction_duration_ms=34, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=1, request_duration_ms=2, response_start_ms=19, response_duration_ms=14, request_bytes=154, request_throughput_kbps=611, response_bytes=39610, response_throughput_kbps=22397, cache_hit=false}
+2026-10-21 02:01:44.502 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <C45F83A0-817B-41F9-94F2-D8D50D271C6C>.<4> finished successfully
+2026-10-21 02:01:44.502 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <DDBE201A-158F-4AB5-A266-5C9D26425896>.<5> finished successfully
+2026-10-21 02:01:44.504 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> response ended
+2026-10-21 02:01:44.505 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> done using Connection 1
+2026-10-21 02:01:44.505 Df Ligature[32459:17961] [com.apple.CFNetwork:Summary] Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> summary for task success {transaction_duration_ms=37, response_status=200, connection=1, reused=1, reused_after_ms=752, request_start_ms=0, request_duration_ms=0, response_start_ms=17, response_duration_ms=20, request_bytes=156, request_throughput_kbps=4131, response_bytes=37995, response_throughput_kbps=14774, cache_hit=false}
+2026-10-21 02:01:44.505 Df Ligature[32459:17961] [com.apple.CFNetwork:Default] Task <6B47EE29-A00C-4037-ACBF-17D54D92380F>.<2> finished successfully
+2026-10-21 02:01:44.505 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> response ended
+2026-10-21 02:01:44.505 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> done using Connection 1
+2026-10-21 02:01:44.506 Df Ligature[32459:17961] [com.apple.CFNetwork:Summary] Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> summary for task success {transaction_duration_ms=36, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=1, request_duration_ms=0, response_start_ms=22, response_duration_ms=13, request_bytes=153, request_throughput_kbps=2928, response_bytes=56240, response_throughput_kbps=32946, cache_hit=false}
+2026-10-21 02:01:44.507 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> response ended
+2026-10-21 02:01:44.507 Df Ligature[32459:1795f] [com.apple.CFNetwork:Default] Task <11C8AD39-60C6-442C-BC7A-432BC4349045>.<8> finished successfully
+2026-10-21 02:01:44.507 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> done using Connection 1
+2026-10-21 02:01:44.513 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> response ended
+2026-10-21 02:01:44.513 Df Ligature[32459:1795f] [com.apple.CFNetwork:Summary] Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> summary for task success {transaction_duration_ms=45, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=1, request_duration_ms=2, response_start_ms=20, response_duration_ms=25, request_bytes=154, request_throughput_kbps=546, response_bytes=56745, response_throughput_kbps=18142, cache_hit=false}
+2026-10-21 02:01:44.513 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> done using Connection 1
+2026-10-21 02:01:44.514 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> response ended
+2026-10-21 02:01:44.514 Df Ligature[32459:17960] [com.apple.network:connection] [C1] event: client:connection_idle @0.945s
+2026-10-21 02:01:44.515 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> done using Connection 1
+2026-10-21 02:01:44.515 Df Ligature[32459:17960] [com.apple.CFNetwork:Default] Task <4ADB89D6-0D90-428F-8FB6-ACC129C285B4>.<3> finished successfully
+2026-10-21 02:01:44.516 Df Ligature[32459:1795f] [com.apple.CFNetwork:Summary] Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> summary for task success {transaction_duration_ms=48, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=2, request_duration_ms=1, response_start_ms=21, response_duration_ms=24, request_bytes=154, request_throughput_kbps=740, response_bytes=71534, response_throughput_kbps=23260, cache_hit=false}
+2026-10-21 02:01:44.516 Df Ligature[32459:1795f] [com.apple.CFNetwork:Summary] Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> summary for task success {transaction_duration_ms=41, response_status=200, connection=1, reused=1, reused_after_ms=0, request_start_ms=0, request_duration_ms=0, response_start_ms=23, response_duration_ms=16, request_bytes=153, request_throughput_kbps=1485, response_bytes=54206, response_throughput_kbps=26475, cache_hit=false}
+2026-10-21 02:01:44.516 Df Ligature[32459:1795f] [com.apple.CFNetwork:Default] Task <7515221B-BA2C-4B06-9B04-191D52431A19>.<6> finished successfully
+2026-10-21 02:01:44.516 Df Ligature[32459:1795f] [com.apple.CFNetwork:Default] Task <75A291B4-0735-4233-8574-3F1BBD32299A>.<10> finished successfully
+2026-10-21 02:01:44.939 Df Ligature[32459:17952] [com.apple.network:activity] <nw_activity 50:1 [18F61073-EBE5-43FF-B632-ACAC385ADCE1] (global parent) (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 3543ms
+2026-10-21 02:01:44.939 Df Ligature[32459:17952] [com.apple.network:activity] <nw_activity 50:2 [5D0DE7D0-F57B-4289-81DC-BC84F9E26BEC] (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 3543ms
+2026-10-21 02:01:44.939 Df Ligature[32459:17952] [com.apple.network:activity] Unsetting the global parent activity <nw_activity 50:1 [18F61073-EBE5-43FF-B632-ACAC385ADCE1] (global parent) (reporting strategy default) complete (reason success)>
+2026-10-21 02:01:44.939 Df Ligature[32459:17952] [com.apple.network:activity] Unset the global parent activity
+2026-10-21 02:01:44.939 Df Ligature[32459:17952] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
