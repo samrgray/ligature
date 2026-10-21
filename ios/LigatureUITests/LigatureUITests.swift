@@ -214,7 +214,7 @@ final class LigatureUITests: XCTestCase {
             XCTAssertTrue(done.waitForExistence(timeout: 3), "the date cell didn’t open a picker")
             done.tap()
             sleep(1)
-            XCTAssertFalse(app.buttons["Follow up: empty"].exists, "picking a date didn’t fill the cell")
+            XCTAssertFalse(cell.label.hasSuffix("empty"), "picking a date didn’t fill the cell (\(cell.label))")
         }
     }
 }
