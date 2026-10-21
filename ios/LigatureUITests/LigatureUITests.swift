@@ -203,10 +203,12 @@ final class LigatureUITests: XCTestCase {
         // A field cell turns into a text box in place.
         let cell = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Follow up")).firstMatch
         // Scroll sideways to the field’s column; the name column stays put.
-        for _ in 0..<3 where !cell.isHittable { app.swipeLeft() }
+        let visible = { cell.exists && self.app.frame.contains(CGPoint(x: cell.frame.midX, y: cell.frame.midY)) }
+        for _ in 0..<4 where !visible() { app.swipeLeft(); sleep(1) }
         XCTAssertTrue(app.buttons["Zoe Abernathy"].firstMatch.exists || app.staticTexts["Zoe Abernathy"].exists, "the name column scrolled away")
         shot("ui-table-scrolled")
-        if cell.isHittable {
+        XCTAssertTrue(visible(), "couldn’t scroll to the field’s column")
+        if visible() {
             cell.tap()
             XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 3) || app.datePickers.firstMatch.waitForExistence(timeout: 3), "the date cell didn’t open a picker")
         }
