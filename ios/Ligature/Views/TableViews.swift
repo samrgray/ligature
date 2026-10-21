@@ -176,7 +176,7 @@ struct ContactsTable: View {
                     .padding(.horizontal, 10)
                     .frame(width: col.width, height: 30, alignment: .leading)
                     .background(Color(.systemBackground))
-                    .overlay(alignment: .trailing) { if i == 0 { Divider() } }
+                    .overlay(alignment: .trailing) { if i == 0 { Rectangle().fill(Color(.separator)).frame(width: 0.5) } }
                 }
                 .buttonStyle(.plain)
                 .offset(x: i == 0 ? scrollX : 0)
@@ -193,7 +193,7 @@ struct ContactsTable: View {
                 cell(c, col.def)
                     .frame(width: col.width, height: Self.rowHeight, alignment: .leading)
                     .background(Color(.systemBackground))
-                    .overlay(alignment: .trailing) { if i == 0 { Divider() } }
+                    .overlay(alignment: .trailing) { if i == 0 { Rectangle().fill(Color(.separator)).frame(width: 0.5) } }
                     .offset(x: i == 0 ? scrollX : 0)
                     .zIndex(i == 0 ? 1 : 0)
             }
