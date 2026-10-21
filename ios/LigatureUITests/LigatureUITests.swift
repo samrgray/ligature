@@ -210,9 +210,11 @@ final class LigatureUITests: XCTestCase {
         XCTAssertTrue(visible(), "couldn’t scroll to the field’s column")
         if visible() {
             cell.tap()
-            XCTAssertTrue(app.navigationBars.buttons["Done"].waitForExistence(timeout: 3) || app.datePickers.firstMatch.waitForExistence(timeout: 3), "the date cell didn’t open a picker")
+            let done = app.navigationBars.buttons["Done"]
+            XCTAssertTrue(done.waitForExistence(timeout: 3), "the date cell didn’t open a picker")
+            done.tap()
+            sleep(1)
+            XCTAssertFalse(app.buttons["Follow up: empty"].exists, "picking a date didn’t fill the cell")
         }
-        app.navigationBars.buttons["Layout"].tap()
-        app.buttons["List"].tap()
     }
 }
